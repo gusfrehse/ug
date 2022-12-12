@@ -12,13 +12,13 @@
 
 class Renderable {
 private:
-    const Mesh *mMesh = nullptr;
-    const Material *mMaterial = nullptr;
+    Mesh *mMesh = nullptr;
+    Material *mMaterial = nullptr;
 
 public:
     Renderable(Mesh *mesh, Material *material) : mMesh{mesh}, mMaterial{material} {}
-    const Mesh* getMesh() const;
-    const Material* getMaterial() const;
+    Mesh* getMesh();
+    Material* getMaterial();
 };
 
 #endif //UG_RENDERABLE_H
