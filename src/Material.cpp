@@ -9,29 +9,35 @@
 #include <optional>
 #include <string>
 
-const std::string shaderDirectoryPrefix("assets/shaders");
+#include <GL/glew.h>
+
+const std::string shaderDirectoryPrefix("assets/shaders/");
 
 static GLuint defaultProgram = 0;
 static bool defaultProgramGenerated = false;
 
 static std::optional<std::vector<char>> readFile(const std::string path) {
     std::ifstream file(path, std::ios::binary | std::ios::ate);
+
+    if (file.fail())
+        return std::nullopt;
+
     std::streamsize size = file.tellg();
+
+    file.seekg(0);
 
     std::vector<char> buffer(size);
 
-    if (file.read(buffer.data(), size)) {
-        return buffer;
-    }
+    file.read(buffer.data(), size);
 
-    return std::nullopt;
+    return buffer;
 }
 
 static GLuint createShader(const std::string shaderPath, GLenum type) {
     auto source = readFile(shaderPath);
 
     if (!source) {
-        std::fprintf(stderr, "[-] ERROR : Couldn't open shader source '%s'\n", shaderPath);
+        std::fprintf(stderr, "[-] ERROR : Couldn't open shader source '%s'\n", shaderPath.c_str());
     }
 
     // Needed because glShaderSource() expects a null terminated string.
@@ -39,7 +45,9 @@ static GLuint createShader(const std::string shaderPath, GLenum type) {
 
     auto shader = glCreateShader(type);
 
-    glShaderSource(shader, 1, (const GLchar *const *)source->data(), nullptr);
+    const GLchar *const sourcePtr = source->data();
+
+    glShaderSource(shader, 1, &sourcePtr, nullptr);
 
     glCompileShader(shader);
 
@@ -47,7 +55,7 @@ static GLuint createShader(const std::string shaderPath, GLenum type) {
     glGetShaderiv(shader, GL_COMPILE_STATUS, &successful);
 
     if (successful == GL_FALSE) {
-        std::fprintf(stderr, "[-] ERROR : Shader compilation error:\n");
+        std::fprintf(stderr, "[-] ERROR : Shader '%s' compilation error:\n", shaderPath.c_str());
 
         GLint length;
         glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &length);

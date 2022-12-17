@@ -9,6 +9,8 @@
 
 #include <GL/glew.h>
 
+#include <glm/vec4.hpp>
+
 class Material {
 private:
     GLuint mShaderProgram = 0;
@@ -20,9 +22,11 @@ public:
     GLuint getShaderProgram() const { return mShaderProgram; };
 };
 
-class PhongShaded : Material {
-    float mSpecular = 0.5f;
-    float mDiffuse = 0.5f;
+class FlatColorMaterial : public Material {
+    glm::vec4 mColor;
+
+public:
+    FlatColorMaterial(glm::vec4 col) : Material("flat_vertex.glsl", "flat_fragment.glsl"), mColor(col) {}
 };
 
 #endif //UG_MATERIAL_H
