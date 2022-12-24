@@ -4,12 +4,12 @@
 
 #include "Renderer.h"
 
-#include <cstdio>
-
 #include "GL/glew.h"
 #include "glm/vec4.hpp"
+#include "glm/gtc/type_ptr.hpp"
 
-Renderer::Renderer() {
+Renderer::Renderer(Camera *camera) : mCamera(camera) {
+    glEnable(GL_DEBUG_OUTPUT);
 }
 
 Renderer::~Renderer() {
@@ -20,11 +20,19 @@ void Renderer::drawRenderable(Renderable *renderable) {
     auto mesh = renderable->getMesh();
 
     glBindVertexArray(mesh->getVAO());
-    //if (mesh->indexed)
-    if (true)
-        glDrawElements(GL_TRIANGLES, mesh->numTriangles, GL_UNSIGNED_SHORT, 0);
+
+    glUseProgram(material->getShaderProgram());
+
+    glm::mat4 model = glm::mat4(1.0f);
+
+    glUniformMatrix4fv(material->getModelMatrixLocation(), 1, GL_FALSE, glm::value_ptr(model));
+    glUniformMatrix4fv(material->getViewMatrixLocation(), 1, GL_FALSE, glm::value_ptr(mCamera->getViewMatrix()));
+    glUniformMatrix4fv(material->getProjectionMatrixLocation(), 1, GL_FALSE, glm::value_ptr(mCamera->getProjectionMatrix()));
+
+    if (mesh->isIndexed())
+        glDrawElements(GL_TRIANGLES, mesh->numVertices, GL_UNSIGNED_SHORT, nullptr);
     else
-        glDrawArrays(GL_TRIANGLES, 0, mesh->numTriangles);
+        glDrawArrays(GL_TRIANGLES, 0, mesh->numVertices);
 }
 
 void Renderer::clearColor(glm::vec4 color) {

@@ -30,6 +30,8 @@ static std::optional<std::vector<char>> readFile(const std::string path) {
 
     file.read(buffer.data(), size);
 
+    file.close();
+
     return buffer;
 }
 
@@ -117,3 +119,33 @@ Material::Material(const std::string& vertexShaderPath, const std::string& fragm
     mShaderProgram = createProgram(vertexShaderPath.c_str(), fragmentShaderPath.c_str());
 }
 
+GLuint Material::getViewMatrixLocation() {
+    if (!mViewMatrixLocation)
+        mViewMatrixLocation = glGetUniformLocation(getShaderProgram(), "uView");
+
+    return *mViewMatrixLocation;
+}
+
+GLuint Material::getProjectionMatrixLocation() {
+    if (!mProjectionMatrixLocation)
+        mProjectionMatrixLocation = glGetUniformLocation(getShaderProgram(), "uProjection");
+
+    return *mProjectionMatrixLocation;
+}
+
+GLuint Material::getModelMatrixLocation() {
+    if (!mModelMatrixLocation)
+        mModelMatrixLocation = glGetUniformLocation(getShaderProgram(), "uModel");
+
+    return *mModelMatrixLocation;
+}
+
+FlatColorMaterial::FlatColorMaterial(glm::vec4 col)
+    : Material("flat_vertex.glsl", "flat_fragment.glsl") {
+
+    mUniformLocation = glGetUniformLocation(this->getShaderProgram(), "uColor");
+}
+
+void FlatColorMaterial::updateColor(glm::vec4 color) {
+    glUniform4f(mUniformLocation, color.x, color.y, color.z, color.w);
+}

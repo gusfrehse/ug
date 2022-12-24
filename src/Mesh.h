@@ -19,14 +19,20 @@ private:
     std::vector<glm::vec3> mNormals;
     std::vector<glm::vec2> mUvs;
 
-public:
-    int numTriangles;
+    GLuint mVao;
+    GLuint mPositionVbo;
+    GLuint mNormalVbo;
+    GLuint mUvVbo;
 
-    std::optional<GLuint> mVao = {};
+public:
+    int numVertices;
+
+    bool mIndexed = false;
 
 public:
     Mesh(std::vector<glm::vec3> vertices, std::vector<glm::vec3> normals, std::vector<glm::vec2> uvs);
     GLuint getVAO();
+    bool isIndexed();
 };
 
 

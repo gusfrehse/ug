@@ -13,13 +13,21 @@ class App {
     int mHeight = 0;
     SDL_Window *mWindow = nullptr;
     SDL_GLContext mContext = nullptr;
+    bool mShouldQuit = false;
 
 public:
     App(int width, int height);
     App(const App& app) = delete;
     ~App();
 
+    void processEvents();
+
+    bool shouldQuit();
+
     void swapWindow();
+
+    int getWidth() const { return mWidth; }
+    int getHeight() const { return mHeight; }
 };
 
 

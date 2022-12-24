@@ -7,11 +7,17 @@
 
 #include "Renderable.h"
 
+#include "Camera.h"
+
 #include <glm/vec4.hpp>
 
+
 class Renderer {
+private:
+    Camera *mCamera;
+
 public:
-    Renderer();
+    Renderer(Camera *camera);
     Renderer(const Renderer& renderer) = delete;
     ~Renderer();
 
