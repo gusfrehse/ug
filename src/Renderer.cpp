@@ -12,8 +12,7 @@ Renderer::Renderer(Camera *camera) : mCamera(camera) {
     glEnable(GL_DEBUG_OUTPUT);
 }
 
-Renderer::~Renderer() {
-}
+Renderer::~Renderer() = default;
 
 void Renderer::drawRenderable(Renderable *renderable) {
     auto material = renderable->getMaterial();
@@ -28,6 +27,8 @@ void Renderer::drawRenderable(Renderable *renderable) {
     glUniformMatrix4fv(material->getModelMatrixLocation(), 1, GL_FALSE, glm::value_ptr(model));
     glUniformMatrix4fv(material->getViewMatrixLocation(), 1, GL_FALSE, glm::value_ptr(mCamera->getViewMatrix()));
     glUniformMatrix4fv(material->getProjectionMatrixLocation(), 1, GL_FALSE, glm::value_ptr(mCamera->getProjectionMatrix()));
+
+    material->updateUniforms();
 
     if (mesh->isIndexed())
         glDrawElements(GL_TRIANGLES, mesh->numVertices, GL_UNSIGNED_SHORT, nullptr);

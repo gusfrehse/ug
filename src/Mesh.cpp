@@ -22,7 +22,8 @@ static GLuint createVBO(std::vector<T> data) {
     return vbo;
 }
 
-Mesh::Mesh(std::vector<glm::vec3> vertices, std::vector<glm::vec3> normals, std::vector<glm::vec2> uvs) {
+Mesh::Mesh(const std::vector<glm::vec3> &vertices, const std::vector<glm::vec3>& normals, const std::vector<glm::vec2>&
+        uvs) {
 
     std::printf("vertices:\n");
     for (const auto& v : vertices) {
@@ -65,10 +66,10 @@ Mesh::Mesh(std::vector<glm::vec3> vertices, std::vector<glm::vec3> normals, std:
     glVertexArrayAttribBinding(mVao, 2, 2);
 }
 
-GLuint Mesh::getVAO() {
+GLuint Mesh::getVAO() const {
     return mVao;
 }
 
-bool Mesh::isIndexed() {
+bool Mesh::isIndexed() const {
     return mIndexed;
 }

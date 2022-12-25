@@ -14,28 +14,30 @@
 
 class Material {
 private:
-    GLuint mShaderProgram = 0;
-    std::optional<GLuint> mProjectionMatrixLocation = std::nullopt;
-    std::optional<GLuint> mViewMatrixLocation = std::nullopt;
-    std::optional<GLuint> mModelMatrixLocation = std::nullopt;
+    GLint mShaderProgram = 0;
+    std::optional<GLint> mProjectionMatrixLocation = std::nullopt;
+    std::optional<GLint> mViewMatrixLocation = std::nullopt;
+    std::optional<GLint> mModelMatrixLocation = std::nullopt;
 
 public:
     Material();
     Material(const std::string &vertexShaderPath, const std::string &fragmentShaderPath);
 
-    GLuint getShaderProgram() const { return mShaderProgram; };
-    GLuint getProjectionMatrixLocation();
-    GLuint getViewMatrixLocation();
-    GLuint getModelMatrixLocation();
+    GLint getShaderProgram() const { return mShaderProgram; };
+    GLint getProjectionMatrixLocation();
+    GLint getViewMatrixLocation();
+    GLint getModelMatrixLocation();
+    virtual void updateUniforms();
 };
 
 class FlatColorMaterial : public Material {
     glm::vec4 mColor = glm::vec4(1.0f, 0.0f, 1.0f, 1.0f);
-    GLuint mUniformLocation = -1;
+    GLint mUniformLocation = -1;
 
 public:
-    FlatColorMaterial(glm::vec4 col);
+    explicit FlatColorMaterial(glm::vec4 col);
     void updateColor(glm::vec4 color);
+    void updateUniforms() override;
 };
 
 #endif //UG_MATERIAL_H

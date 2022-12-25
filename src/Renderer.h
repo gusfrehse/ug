@@ -17,7 +17,7 @@ private:
     Camera *mCamera;
 
 public:
-    Renderer(Camera *camera);
+    explicit Renderer(Camera *camera);
     Renderer(const Renderer& renderer) = delete;
     ~Renderer();
 

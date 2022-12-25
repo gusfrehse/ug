@@ -28,9 +28,9 @@ public:
     const glm::vec3& getPosition() const { return mPosition; }
     const glm::mat4& getViewMatrix() const { return mViewMatrix; }
     const glm::mat4& getProjectionMatrix() const { return mProjectionMatrix; }
-    const glm::mat4 getProjectionViewMatrix() const { return mProjectionMatrix * mViewMatrix; }
+    glm::mat4 getProjectionViewMatrix() const { return mProjectionMatrix * mViewMatrix; }
 
-    float getAspectRatio() { return mAspectRatio; }
+    float getAspectRatio() const { return mAspectRatio; }
 };
 
 

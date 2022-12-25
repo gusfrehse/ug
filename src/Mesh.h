@@ -30,9 +30,11 @@ public:
     bool mIndexed = false;
 
 public:
-    Mesh(std::vector<glm::vec3> vertices, std::vector<glm::vec3> normals, std::vector<glm::vec2> uvs);
-    GLuint getVAO();
-    bool isIndexed();
+    Mesh(const std::vector<glm::vec3> &vertices, const std::vector<glm::vec3> &normals,
+         const std::vector<glm::vec2> &uvs);
+
+    GLuint getVAO() const;
+    bool isIndexed() const;
 };
 
 

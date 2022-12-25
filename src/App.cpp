@@ -57,6 +57,6 @@ void App::processEvents() {
     }
 }
 
-bool App::shouldQuit() {
+bool App::shouldQuit() const {
     return mShouldQuit;
 }

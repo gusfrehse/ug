@@ -22,7 +22,7 @@ public:
 
     void processEvents();
 
-    bool shouldQuit();
+    bool shouldQuit() const;
 
     void swapWindow();
 
