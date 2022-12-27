@@ -8,6 +8,8 @@
 #include <glm/vec3.hpp>
 #include <glm/mat4x4.hpp>
 
+#include <SDL.h>
+
 class Camera {
 protected:
     glm::vec3 mPosition = glm::vec3(0.0f);
@@ -31,6 +33,8 @@ public:
     glm::mat4 getProjectionViewMatrix() const { return mProjectionMatrix * mViewMatrix; }
 
     float getAspectRatio() const { return mAspectRatio; }
+
+    void processEvent(SDL_Event event);
 };
 
 

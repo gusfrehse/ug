@@ -20,7 +20,7 @@ App::App(int width, int height) : mWidth{width}, mHeight{height} {
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
 #endif
 
-    mWindow = SDL_CreateWindow("TEMP TITLE", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640, 360, SDL_WINDOW_OPENGL);
+    mWindow = SDL_CreateWindow("TEMP TITLE", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640, 360, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 
     if (!mWindow) {
         std::fprintf(stderr, "[-] ERROR : Couldn't create window: %s\n", SDL_GetError());
@@ -48,11 +48,16 @@ void App::swapWindow() {
     SDL_GL_SwapWindow(mWindow);
 }
 
-void App::processEvents() {
-    SDL_Event event;
-    while (SDL_PollEvent(&event)) {
-        if (event.type == SDL_QUIT) {
-            mShouldQuit = true;
+void App::processEvent(SDL_Event event) {
+    if (event.type == SDL_QUIT) {
+        mShouldQuit = true;
+    } else if (event.type == SDL_WINDOWEVENT) {
+        switch (event.window.event) {
+            case SDL_WINDOWEVENT_RESIZED:
+                mWidth = event.window.data1;
+                mHeight = event.window.data2;
+                glViewport(0, 0, mWidth, mHeight);
+                break;
         }
     }
 }

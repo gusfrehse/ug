@@ -31,7 +31,6 @@ Mesh createTriangleMesh() {
 int main(int, char**) {
     std::printf("Hello world! Current directory: '%s'\n", std::filesystem::current_path().string().c_str());
 
-
     App app(1280, 720);
     PerspectiveCamera camera((float) app.getWidth() / (float) app.getHeight());
     Renderer renderer(&camera);
@@ -47,7 +46,11 @@ int main(int, char**) {
     camera.setPosition(glm::vec3(0.0f, 0.0f, -2.0f));
 
     while (!app.shouldQuit()) {
-        app.processEvents();
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            app.processEvent(event);
+            camera.processEvent(event);
+        }
 
         renderer.clear();
 

@@ -24,22 +24,6 @@ static GLuint createVBO(std::vector<T> data) {
 
 Mesh::Mesh(const std::vector<glm::vec3> &vertices, const std::vector<glm::vec3>& normals, const std::vector<glm::vec2>&
         uvs) {
-
-    std::printf("vertices:\n");
-    for (const auto& v : vertices) {
-        std::printf("\t%g %g %g\n", v.x, v.y, v.z);
-    }
-
-    std::printf("normals:\n");
-    for (const auto& v : vertices) {
-        std::printf("\t%g %g %g\n", v.x, v.y, v.z);
-    }
-
-    std::printf("uvs:\n");
-    for (const auto &v : vertices) {
-        std::printf("\t%g %g %g\n", v.x, v.y, v.z);
-    }
-
     numVertices = vertices.size();
 
     mVao = createVAO();

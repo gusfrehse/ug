@@ -20,7 +20,7 @@ public:
     App(const App& app) = delete;
     ~App();
 
-    void processEvents();
+    void processEvent(SDL_Event event);
 
     bool shouldQuit() const;
 
