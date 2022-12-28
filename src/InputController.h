@@ -23,12 +23,12 @@ enum class Action : uint8_t {
 class InputController {
 private:
     std::unordered_map<SDL_Keycode, Action> mBindings = {
-        {SDLK_w, Action::FORWARD},
-        {SDLK_s, Action::BACKWARD},
-        {SDLK_a, Action::LEFT},
-        {SDLK_d, Action::RIGHT},
+        {SDLK_w,      Action::FORWARD},
+        {SDLK_s,      Action::BACKWARD},
+        {SDLK_a,      Action::LEFT},
+        {SDLK_d,      Action::RIGHT},
         {SDLK_LSHIFT, Action::DOWN},
-        {SDLK_SPACE, Action::UP},
+        {SDLK_d,      Action::UP},
     };
 
     std::vector<bool> mPressed;
