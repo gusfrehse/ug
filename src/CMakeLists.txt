@@ -1,4 +1,4 @@
-add_executable(game main.cpp Renderer.cpp Renderer.h Renderable.cpp Renderable.h Mesh.cpp Mesh.h Material.cpp Material.h App.cpp App.h Camera.cpp Camera.h PerspectiveCamera.cpp PerspectiveCamera.h)
+add_executable(game main.cpp Renderer.cpp Renderer.h Renderable.cpp Renderable.h Mesh.cpp Mesh.h Material.cpp Material.h App.cpp App.h Camera.cpp Camera.h PerspectiveCamera.cpp PerspectiveCamera.h InputController.cpp InputController.h)
 
 target_compile_features(game PUBLIC cxx_std_20)
 

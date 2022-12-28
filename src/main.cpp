@@ -4,6 +4,7 @@
 #include "Renderer.h"
 #include "App.h"
 #include "PerspectiveCamera.h"
+#include "InputController.h"
 
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
@@ -34,6 +35,7 @@ int main(int, char**) {
     App app(1280, 720);
     PerspectiveCamera camera((float) app.getWidth() / (float) app.getHeight());
     Renderer renderer(&camera);
+    InputController inputContr{};
 
     auto triangleMesh = createTriangleMesh();
     auto triangleMat = FlatColorMaterial(glm::vec4(0.2f, 0.5f, 0.3, 1.0f));
@@ -45,11 +47,14 @@ int main(int, char**) {
 
     camera.setPosition(glm::vec3(0.0f, 0.0f, -2.0f));
 
+    long long count = 0;
+
     while (!app.shouldQuit()) {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             app.processEvent(event);
             camera.processEvent(event);
+            inputContr.processEvent(event);
         }
 
         renderer.clear();
@@ -57,5 +62,7 @@ int main(int, char**) {
         renderer.drawRenderable(&triangle);
 
         app.swapWindow();
+
+	inputContr.reload();
     }
 }
