@@ -15,6 +15,8 @@ enum class Action : uint8_t {
     BACKWARD,
     LEFT,
     RIGHT,
+    UP,
+    DOWN,
     COUNT
 };
 
@@ -25,6 +27,8 @@ private:
         {SDLK_s, Action::BACKWARD},
         {SDLK_a, Action::LEFT},
         {SDLK_d, Action::RIGHT},
+        {SDLK_LSHIFT, Action::DOWN},
+        {SDLK_SPACE, Action::UP},
     };
 
     std::vector<bool> mPressed;

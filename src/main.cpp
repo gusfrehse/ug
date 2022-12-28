@@ -29,13 +29,30 @@ Mesh createTriangleMesh() {
     );
 }
 
+void updateCamera(PerspectiveCamera& camera, InputController& input) {
+    float speed = 0.001f;
+    if (input.isHolded(Action::FORWARD)) {
+        camera.moveFoward(speed);
+    } else if (input.isHolded(Action::BACKWARD)) {
+        camera.moveFoward(-speed);
+    } else if (input.isHolded(Action::RIGHT)) {
+        camera.moveRight(speed);
+    } else if (input.isHolded(Action::LEFT)) {
+        camera.moveRight(-speed);
+    } else if (input.isHolded(Action::UP)) {
+        camera.moveUp(speed);
+    } if (input.isHolded(Action::DOWN)) {
+        camera.moveUp(-speed);
+    }
+ }
+
 int main(int, char**) {
     std::printf("Hello world! Current directory: '%s'\n", std::filesystem::current_path().string().c_str());
 
     App app(1280, 720);
     PerspectiveCamera camera((float) app.getWidth() / (float) app.getHeight());
     Renderer renderer(&camera);
-    InputController inputContr{};
+    InputController input{};
 
     auto triangleMesh = createTriangleMesh();
     auto triangleMat = FlatColorMaterial(glm::vec4(0.2f, 0.5f, 0.3, 1.0f));
@@ -54,8 +71,10 @@ int main(int, char**) {
         while (SDL_PollEvent(&event)) {
             app.processEvent(event);
             camera.processEvent(event);
-            inputContr.processEvent(event);
+            input.processEvent(event);
         }
+
+        updateCamera(camera, input);
 
         renderer.clear();
 
@@ -63,6 +82,6 @@ int main(int, char**) {
 
         app.swapWindow();
 
-	inputContr.reload();
+	input.reload();
     }
 }
