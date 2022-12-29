@@ -36,18 +36,21 @@ void PerspectiveCamera::setPitch(float pitch) {
 }
 
 void PerspectiveCamera::moveRight(float amount) {
-    glm::vec4 right = mInverseViewMatrix[0];
-    setPosition(getPosition() + amount * glm::vec3(right.x, right.y, right.z));
+    glm::vec4 cameraRight = mInverseViewMatrix[0];
+    glm::vec3 right = glm::normalize(glm::vec3(cameraRight.x, 0.0f, cameraRight.z));
+    setPosition(getPosition() + amount * right);
 }
 
 void PerspectiveCamera::moveUp(float amount) {
-    glm::vec4 up = mInverseViewMatrix[1];
+    // glm::vec4 up = mInverseViewMatrix[1];
+    glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
     setPosition(getPosition() + amount * glm::vec3(up.x, up.y, up.z));
 }
 
 void PerspectiveCamera::moveFoward(float amount) {
-    glm::vec4 forward = -mInverseViewMatrix[2];
-    setPosition(getPosition() + amount * glm::vec3(forward.x, forward.y, forward.z));
+    glm::vec4 cameraForward = -mInverseViewMatrix[2];
+    glm::vec3 forward = glm::normalize(glm::vec3(cameraForward.x, 0.0f, cameraForward.z));
+    setPosition(getPosition() + amount * forward);
 }
 
 void PerspectiveCamera::lookUp(float amount) {
@@ -57,7 +60,7 @@ void PerspectiveCamera::lookUp(float amount) {
 }
 
 void PerspectiveCamera::lookRight(float amount) {
-    float yaw = mYaw + amount;
+    float yaw = mYaw - amount;
     setYaw(glm::clamp(yaw, -180.0f, 179.99f));
 }
 
