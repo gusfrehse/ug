@@ -15,8 +15,8 @@ void PerspectiveCamera::recalculateProjectionMatrix() {
 void PerspectiveCamera::recalculateViewMatrix() {
     mInverseViewMatrix = glm::mat4(1.0);
     mInverseViewMatrix = glm::translate(mInverseViewMatrix, mPosition);
-    mInverseViewMatrix = glm::rotate(mInverseViewMatrix, mYaw, glm::vec3(0.0f, 1.0f, 0.0f));
-    mInverseViewMatrix = glm::rotate(mInverseViewMatrix, mPitch, glm::vec3(1.0f, 0.0f, 0.0f));
+    mInverseViewMatrix = glm::rotate(mInverseViewMatrix, glm::radians(mYaw), glm::vec3(0.0f, 1.0f, 0.0f));
+    mInverseViewMatrix = glm::rotate(mInverseViewMatrix, glm::radians(mPitch), glm::vec3(1.0f, 0.0f, 0.0f));
     mViewMatrix = glm::inverse(mInverseViewMatrix);
 }
 
@@ -54,14 +54,19 @@ void PerspectiveCamera::moveFoward(float amount) {
 }
 
 void PerspectiveCamera::lookUp(float amount) {
-    mPitch += amount;
+    mPitch += amount / 2.0f;
     float pitch = mPitch + amount;
     setPitch(glm::clamp(pitch, -89.99f, 89.99f));
 }
 
 void PerspectiveCamera::lookRight(float amount) {
     float yaw = mYaw - amount;
-    setYaw(glm::clamp(yaw, -180.0f, 179.99f));
+    if (yaw < -180.0f)
+        yaw += 360.0f;
+    else if (yaw > 180.0f)
+        yaw -= 360.0f;
+
+    setYaw(yaw);
 }
 
 PerspectiveCamera::PerspectiveCamera(float aspectRatio) : Camera(aspectRatio) {

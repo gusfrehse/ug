@@ -55,20 +55,22 @@ void updateCamera(PerspectiveCamera& camera, InputController& input) {
         camera.moveUp(-speed);
     }
 
+    float sensitivity = 0.1f;
+
     if (input.isHolded(Action::LOOK_UP)) {
-        camera.lookUp(speed);
+        camera.lookUp(sensitivity);
     }
 
     if (input.isHolded(Action::LOOK_DOWN)) {
-        camera.lookUp(-speed);
+        camera.lookUp(-sensitivity);
     }
 
     if (input.isHolded(Action::LOOK_RIGHT)) {
-        camera.lookRight(speed);
+        camera.lookRight(sensitivity);
     }
 
     if (input.isHolded(Action::LOOK_LEFT)) {
-        camera.lookRight(-speed);
+        camera.lookRight(-sensitivity);
     }
 
 
