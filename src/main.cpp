@@ -33,17 +33,45 @@ void updateCamera(PerspectiveCamera& camera, InputController& input) {
     float speed = 0.001f;
     if (input.isHolded(Action::FORWARD)) {
         camera.moveFoward(speed);
-    } else if (input.isHolded(Action::BACKWARD)) {
+    } 
+
+    if (input.isHolded(Action::BACKWARD)) {
         camera.moveFoward(-speed);
-    } else if (input.isHolded(Action::RIGHT)) {
+    } 
+
+    if (input.isHolded(Action::RIGHT)) {
         camera.moveRight(speed);
-    } else if (input.isHolded(Action::LEFT)) {
+    } 
+
+    if (input.isHolded(Action::LEFT)) {
         camera.moveRight(-speed);
-    } else if (input.isHolded(Action::UP)) {
+    } 
+
+    if (input.isHolded(Action::UP)) {
         camera.moveUp(speed);
-    } if (input.isHolded(Action::DOWN)) {
+    } 
+
+    if (input.isHolded(Action::DOWN)) {
         camera.moveUp(-speed);
     }
+
+    if (input.isHolded(Action::LOOK_UP)) {
+        camera.lookUp(speed);
+    }
+
+    if (input.isHolded(Action::LOOK_DOWN)) {
+        camera.lookUp(-speed);
+    }
+
+    if (input.isHolded(Action::LOOK_RIGHT)) {
+        camera.lookRight(speed);
+    }
+
+    if (input.isHolded(Action::LOOK_LEFT)) {
+        camera.lookRight(-speed);
+    }
+
+
  }
 
 int main(int, char**) {
@@ -62,7 +90,7 @@ int main(int, char**) {
 
     triangleMat.updateColor(glm::vec4(0.1f, 0.2f, 0.6f, 1.0f));
 
-    camera.setPosition(glm::vec3(0.0f, 0.0f, -2.0f));
+    camera.setPosition(glm::vec3(0.0f, 0.0f, 2.0f));
 
     long long count = 0;
 

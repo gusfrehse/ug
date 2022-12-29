@@ -14,6 +14,7 @@ private:
     float mPitch = 0.0f;
     float mNearPlane = 0.01f;
     float mFarPlane = 10.0;
+    glm::mat4 mInverseViewMatrix;
 
     void recalculateProjectionMatrix() override;
     void recalculateViewMatrix() override;
@@ -26,6 +27,8 @@ public:
     void moveRight(float amount);
     void moveUp(float amount);
     void moveFoward(float amount);
+    void lookUp(float amount);
+    void lookRight(float amount);
 };
 
 

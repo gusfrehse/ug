@@ -13,11 +13,11 @@ void PerspectiveCamera::recalculateProjectionMatrix() {
 }
 
 void PerspectiveCamera::recalculateViewMatrix() {
-    mViewMatrix = glm::mat4(1.0);
-    mViewMatrix = glm::translate(mViewMatrix, mPosition);
-    mViewMatrix = glm::rotate(mViewMatrix, mPitch, glm::vec3(1.0f, 0.0f, 0.0f));
-    mViewMatrix = glm::rotate(mViewMatrix, mYaw, glm::vec3(0.0f, 1.0f, 0.0f));
-    mViewMatrix = glm::inverse(mViewMatrix);
+    mInverseViewMatrix = glm::mat4(1.0);
+    mInverseViewMatrix = glm::translate(mInverseViewMatrix, mPosition);
+    mInverseViewMatrix = glm::rotate(mInverseViewMatrix, mYaw, glm::vec3(0.0f, 1.0f, 0.0f));
+    mInverseViewMatrix = glm::rotate(mInverseViewMatrix, mPitch, glm::vec3(1.0f, 0.0f, 0.0f));
+    mViewMatrix = glm::inverse(mInverseViewMatrix);
 }
 
 void PerspectiveCamera::setFov(float fov) {
@@ -36,21 +36,29 @@ void PerspectiveCamera::setPitch(float pitch) {
 }
 
 void PerspectiveCamera::moveRight(float amount) {
-    glm::vec4 right = getViewMatrix()[0];
-    std::printf("right %g %g %g\n", right.x, right.y, right.z);
+    glm::vec4 right = mInverseViewMatrix[0];
     setPosition(getPosition() + amount * glm::vec3(right.x, right.y, right.z));
 }
 
 void PerspectiveCamera::moveUp(float amount) {
-    glm::vec4 up = getViewMatrix()[1];
-    std::printf("up %g %g %g\n", up.x, up.y, up.z);
+    glm::vec4 up = mInverseViewMatrix[1];
     setPosition(getPosition() + amount * glm::vec3(up.x, up.y, up.z));
 }
 
 void PerspectiveCamera::moveFoward(float amount) {
-    glm::vec4 forward = getViewMatrix()[2];
-    std::printf("forward %g %g %g\n", forward.x, forward.y, forward.z);
+    glm::vec4 forward = -mInverseViewMatrix[2];
     setPosition(getPosition() + amount * glm::vec3(forward.x, forward.y, forward.z));
+}
+
+void PerspectiveCamera::lookUp(float amount) {
+    mPitch += amount;
+    float pitch = mPitch + amount;
+    setPitch(glm::clamp(pitch, -89.99f, 89.99f));
+}
+
+void PerspectiveCamera::lookRight(float amount) {
+    float yaw = mYaw + amount;
+    setYaw(glm::clamp(yaw, -180.0f, 179.99f));
 }
 
 PerspectiveCamera::PerspectiveCamera(float aspectRatio) : Camera(aspectRatio) {
