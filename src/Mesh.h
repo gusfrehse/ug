@@ -34,6 +34,7 @@ public:
          const std::vector<glm::vec2> &uvs);
 
     GLuint getVAO() const;
+    std::vector<glm::vec3>& getVertices() { return mVertices };
     bool isIndexed() const;
 };
 
