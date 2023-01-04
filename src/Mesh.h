@@ -7,7 +7,9 @@
 
 #include <vector>
 #include <optional>
+#include <string>
 
+#include <glm/vec4.hpp>
 #include <glm/vec3.hpp>
 #include <glm/vec2.hpp>
 
@@ -15,7 +17,7 @@
 
 class Mesh {
 private:
-    std::vector<glm::vec3> mVertices;
+    std::vector<glm::vec4> mVertices;
     std::vector<glm::vec3> mNormals;
     std::vector<glm::vec2> mUvs;
 
@@ -23,6 +25,7 @@ private:
     GLuint mPositionVbo;
     GLuint mNormalVbo;
     GLuint mUvVbo;
+    GLuint mEbo;
 
 public:
     int numVertices;
@@ -30,11 +33,18 @@ public:
     bool mIndexed = false;
 
 public:
-    Mesh(const std::vector<glm::vec3> &vertices, const std::vector<glm::vec3> &normals,
+    Mesh(const std::vector<glm::vec4> &vertices, const std::vector<glm::vec3> &normals,
          const std::vector<glm::vec2> &uvs);
 
+    Mesh(const std::vector<glm::vec4> &vertices, const std::vector<glm::vec3> &normals,
+         const std::vector<glm::vec2> &uvs, const std::vector<int> indices);
+
+    static Mesh fromObjFile(const std::string& path);
+
     GLuint getVAO() const;
-    std::vector<glm::vec3>& getVertices() { return mVertices };
+    const std::vector<glm::vec4>& getVertices() const { return mVertices; }
+    const std::vector<glm::vec3>& getNormals() const { return mNormals; }
+    const std::vector<glm::vec2>& getUvs() const { return mUvs; }
     bool isIndexed() const;
 };
 

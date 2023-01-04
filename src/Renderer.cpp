@@ -10,6 +10,7 @@
 
 Renderer::Renderer(Camera *camera) : mCamera(camera) {
     glEnable(GL_DEBUG_OUTPUT);
+    glEnable(GL_DEPTH_TEST);
 }
 
 Renderer::~Renderer() = default;
