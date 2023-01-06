@@ -8,8 +8,10 @@ uniform mat4 uView;
 uniform mat4 uProjection;
 
 out vec3 vNormal;
+out float vDepth;
 
 void main() {
     vNormal = aNormal;
     gl_Position = uProjection * uView * uModel * aPos;
-}
+    vDepth = gl_Position.w;
+ }

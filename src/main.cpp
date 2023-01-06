@@ -10,9 +10,13 @@
 #include "PerspectiveCamera.h"
 #include "InputController.h"
 #include "DumbPairHash.h"
+#include "DeltaTimer.h"
 
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
+
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/hash.hpp>
 
 
 Mesh createTriangleMesh() {
@@ -34,8 +38,8 @@ Mesh createTriangleMesh() {
     );
 }
 
-void updateCamera(PerspectiveCamera& camera, InputController& input) {
-    float speed = 0.01f;
+void updateCamera(PerspectiveCamera& camera, InputController& input, float dt) {
+    float speed = 0.01f * dt;
     if (input.isHolded(Action::FORWARD)) {
         camera.moveFoward(speed);
     } 
@@ -60,7 +64,7 @@ void updateCamera(PerspectiveCamera& camera, InputController& input) {
         camera.moveUp(-speed);
     }
 
-    float sensitivity = 0.1f;
+    float sensitivity = 0.1f * dt;
 
     if (input.isHolded(Action::LOOK_UP)) {
         camera.lookUp(sensitivity);
@@ -78,6 +82,27 @@ void updateCamera(PerspectiveCamera& camera, InputController& input) {
         camera.lookRight(-sensitivity);
     }
 }
+Mesh calculateShadowVolume2(glm::vec3 lightPos, const Mesh& input) {
+    // TODO: currently we don't use a model matrix hehe, but will use sometime!
+    // lightPos = glm::inverse (modelMatrix) * lightPos;
+
+    if (input.isIndexed()) {
+        printf(" Volumes for indexed meshes are not yet implemented\n");
+        exit(1);
+    }
+
+    auto& vertices = input.getVertices();
+    auto& normals = input.getNormals();
+    auto& uvs = input.getUvs();
+
+    std::printf("size of original vertices %d\n", vertices.size());
+
+    for (int i = 0; i < vertices.size() / 3; i++) {
+    }
+
+    Mesh m(vertices, normals, uvs);
+    return m;
+}
 
 Mesh calculateShadowVolume(glm::vec3 lightPos, const Mesh& input) {
     // TODO: currently we don't use a model matrix hehe, but will use sometime!
@@ -88,23 +113,43 @@ Mesh calculateShadowVolume(glm::vec3 lightPos, const Mesh& input) {
         exit(1);
     }
 
-    // maybe too slow, perhaps just using a vec<bool> is easier...
-    std::unordered_set<std::pair<int, int>, DumbPairHash> contourEdges;
-
-    auto updateContourEdge = [&contourEdges](auto edge) {
-        auto edgeIt = contourEdges.find(edge);
-        if (edgeIt != contourEdges.end()) {
-            contourEdges.erase(edgeIt);
-        } else {
-            contourEdges.insert(edge);
-        }
-    };
-
     auto& vertices = input.getVertices();
     auto& normals = input.getNormals();
     auto& uvs = input.getUvs();
 
     std::printf("size of original vertices %d\n", vertices.size());
+
+    // maybe too slow, perhaps just using a vec<bool> is easier...
+    std::unordered_set<std::pair<glm::vec4, glm::vec4>, DumbPairHash> contourEdges;
+
+    auto updateContourEdge = [&contourEdges, &vertices](auto edgeIndexes) {
+        DumbPairHash dumbHash;
+
+        auto edge = std::make_pair(vertices[edgeIndexes.first], vertices[edgeIndexes.second]);
+        std::hash<glm::vec4> vec4hash;
+
+        if (glm::length(edge.first) > glm::length(edge.second))
+            edge = std::make_pair(edge.second, edge.first);
+
+        {
+            DumbPairHash dumbHash;
+            std::printf("  evaluating edgeIndexes (%d, %d) = (<%g, %g, %g>, <%g, %g, %g>), hash = %zx\n",
+                        edgeIndexes.first, edgeIndexes.second,
+                        edge.first.x, edge.first.y, edge.first.z,
+                        edge.second.x, edge.second.y, edge.second.z),
+                        dumbHash(edge);
+        }
+
+        auto edgeIt = contourEdges.find(edge);
+
+        if (edgeIt != contourEdges.end()) {
+            std::printf("    already there, removing\n");
+            contourEdges.erase(edgeIt);
+        } else {
+            std::printf("    not there, inserting\n");
+            contourEdges.insert(edge);
+        }
+    };
 
     for (int i = 0; i < vertices.size() / 3; i++) {
         // for each triangle...
@@ -125,7 +170,8 @@ Mesh calculateShadowVolume(glm::vec3 lightPos, const Mesh& input) {
 
     // TODO: optimize this probably, done hastly.
 
-    std::printf("%d vertices in the contour\n", contourEdges.size());
+    std::printf("%d edges in the contour\n", contourEdges.size());
+
 
     std::vector<glm::vec4> newVertices;
     std::vector<glm::vec3> newNormals(4 * contourEdges.size(), glm::vec3(0.0f));
@@ -135,20 +181,21 @@ Mesh calculateShadowVolume(glm::vec3 lightPos, const Mesh& input) {
 
     for (const auto& [a, b] : contourEdges) {
         // we need to add quad with two vertices at infinity?
-        glm::vec4 newVertexA = vertices[a] - glm::vec4(lightPos, 0.0f);
+        glm::vec4 newVertexA = a - glm::vec4(lightPos, 0.0f);
         newVertexA.w = 0.0f; // make it at infinity
 
-        glm::vec4 newVertexB = vertices[b] - glm::vec4(lightPos, 0.0f);
+        glm::vec4 newVertexB = b - glm::vec4(lightPos, 0.0f);
         newVertexB.w = 0.0f; // make it at infinity
 
-        newVertices.push_back(vertices[b]); // counter clockwise while viewing from outside the volume.
-        newVertices.push_back(vertices[a]);
+        newVertices.push_back(b); // counter clockwise while viewing from outside the volume.
+        newVertices.push_back(a);
         newVertices.push_back(newVertexA);
 
         newVertices.push_back(newVertexA);
         newVertices.push_back(newVertexB);
-        newVertices.push_back(vertices[b]);
+        newVertices.push_back(b);
     }
+
 
     // TODO: change vertices to become vec4, because we need points at infinity, also make it easier to make this mesh, without too much copying.
     Mesh out = Mesh(newVertices, newNormals, newUvs);
@@ -171,9 +218,9 @@ int main(int, char**) {
 
     glm::vec3 lightPos = glm::vec3(0.0f, 0.0f, -10000.0f);
 
-    Mesh shadowVolumeMesh = calculateShadowVolume(lightPos, mainMesh); 
+    //Mesh shadowVolumeMesh = calculateShadowVolume(lightPos, mainMesh); 
 
-    auto shadowVolume = Renderable(&shadowVolumeMesh, &otherMat);
+    //auto shadowVolume = Renderable(&shadowVolumeMesh, &otherMat);
 
     renderer.clearColor(glm::vec4(0.3, 0.8f, 0.2f, 1.0f));
 
@@ -184,6 +231,9 @@ int main(int, char**) {
     long long count = 0;
 
     while (!app.shouldQuit()) {
+        DT(dt);
+        std::printf("\rdelta time: %f                        ", dt.get());
+
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             app.processEvent(event);
@@ -191,12 +241,12 @@ int main(int, char**) {
             input.processEvent(event);
         }
 
-        updateCamera(camera, input);
+        updateCamera(camera, input, dt.get());
 
         renderer.clear();
 
         renderer.drawRenderable(&triangle);
-        renderer.drawRenderable(&shadowVolume);
+        //renderer.drawRenderable(&shadowVolume);
 
         app.swapWindow();
 

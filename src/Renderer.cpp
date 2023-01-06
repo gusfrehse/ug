@@ -11,6 +11,8 @@
 Renderer::Renderer(Camera *camera) : mCamera(camera) {
     glEnable(GL_DEBUG_OUTPUT);
     glEnable(GL_DEPTH_TEST);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glLineWidth(2);
 }
 
 Renderer::~Renderer() = default;
@@ -32,7 +34,7 @@ void Renderer::drawRenderable(Renderable *renderable) {
     material->updateUniforms();
 
     if (mesh->isIndexed())
-        glDrawElements(GL_TRIANGLES, mesh->numVertices, GL_UNSIGNED_SHORT, nullptr);
+        glDrawElements(GL_TRIANGLES, mesh->numVertices, GL_UNSIGNED_INT, nullptr);
     else
         glDrawArrays(GL_TRIANGLES, 0, mesh->numVertices);
 }
