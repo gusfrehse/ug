@@ -4,6 +4,7 @@
 #include <unordered_set>
 #include <utility>
 #include <functional>
+#include <tuple>
 
 #include "Renderer.h"
 #include "App.h"
@@ -82,29 +83,113 @@ void updateCamera(PerspectiveCamera& camera, InputController& input, float dt) {
         camera.lookRight(-sensitivity);
     }
 }
-Mesh calculateShadowVolume2(glm::vec3 lightPos, const Mesh& input) {
+std::tuple<Mesh, Mesh, Mesh> calculateShadowVolume(glm::vec4 lightPos, const Mesh& input) {
     // TODO: currently we don't use a model matrix hehe, but will use sometime!
     // lightPos = glm::inverse (modelMatrix) * lightPos;
 
-    if (input.isIndexed()) {
-        printf(" Volumes for indexed meshes are not yet implemented\n");
+    if (!input.isIndexed()) {
+        printf("[-] ERROR: Volumes for non indexed meshes are not yet implemented\n");
         exit(1);
     }
 
-    auto& vertices = input.getVertices();
-    auto& normals = input.getNormals();
-    auto& uvs = input.getUvs();
+    auto vertices = input.getVertices();
+    auto normals = input.getNormals();
+    auto uvs = input.getUvs();
+    auto indices = input.getIndices();
+
+    std::unordered_set<std::pair<int, int>, DumbPairHash> contourEdges;
 
     std::printf("size of original vertices %d\n", vertices.size());
 
-    for (int i = 0; i < vertices.size() / 3; i++) {
+    auto updateContourEdge = [&contourEdges, &vertices](std::pair<int, int> edge) {
+        std::printf("  examining edge <%d, %d> = <(%3.3f, %3.3f, %3.3f), (%3.3f, %3.3f, %3.3f)>\n",
+                    edge.first, edge.second,
+                    vertices[edge.first].x, vertices[edge.first].y, vertices[edge.first].z,
+                    vertices[edge.second].x, vertices[edge.second].y, vertices[edge.second].z);
+        auto edgeIt = contourEdges.find(edge);
+        if (edgeIt != contourEdges.end()) {
+            std::printf("    already there, removing\n");
+            contourEdges.erase(edgeIt);
+        } else {
+            std::printf("    not there, inserting\n");
+            contourEdges.insert(edge);
+        }
+    };
+
+    std::vector<glm::vec4> frontCap;
+    std::vector<glm::vec4> backCap;
+    std::vector<glm::vec4> silhouette;
+
+    // for each face
+    for (int i = 0; i < indices.size() / 3; i++) {
+        glm::vec3 averageNormal = (normals[i] + normals[i + 1] + normals[i + 2]) / 3.0f;
+
+        glm::vec4 averagePos = (vertices[i] + vertices[i + 1] + vertices[i + 2]) / 3.0f;
+
+        glm::vec3 lightDir = glm::vec3(averagePos - lightPos);
+
+        if (glm::dot(lightDir, averageNormal) >= 0) {
+            // front cap
+            frontCap.push_back(vertices[indices[i]]);
+            frontCap.push_back(vertices[indices[i + 1]]);
+            frontCap.push_back(vertices[indices[i + 2]]);
+
+            // silhouette detection
+            updateContourEdge(std::minmax(indices[i + 0], indices[i + 1]));
+            updateContourEdge(std::minmax(indices[i + 1], indices[i + 2]));
+            updateContourEdge(std::minmax(indices[i + 2], indices[i + 0]));
+        } else {
+            // back cap
+            glm::vec4 a = vertices[indices[i]];
+            a.w = 0.0f;
+            glm::vec4 b = vertices[indices[i + 1]];
+            b.w = 0.0f;
+            glm::vec4 c = vertices[indices[i + 2]];
+            c.w = 0.0f;
+
+            backCap.push_back(b);
+            backCap.push_back(a);
+            backCap.push_back(c);
+        }
     }
 
-    Mesh m(vertices, normals, uvs);
-    return m;
+    for (const auto& [a, b] : contourEdges) {
+        glm::vec4 va(vertices[a]);
+        glm::vec4 va_inf = vertices[a] - lightPos;
+        va_inf.w = 0.0f;
+
+        glm::vec4 vb(vertices[b]);
+        glm::vec4 vb_inf = vertices[b] - lightPos;
+        vb_inf.w = 0.0f;
+
+        silhouette.push_back(va);
+        silhouette.push_back(vb);
+        silhouette.push_back(va_inf);
+
+        silhouette.push_back(vb);
+        silhouette.push_back(vb_inf);
+        silhouette.push_back(va_inf);
+    }
+
+    normals.resize(frontCap.size());
+    uvs.resize(frontCap.size());
+    Mesh frontCapMesh(frontCap, normals, uvs);
+
+    normals.resize(backCap.size());
+    uvs.resize(backCap.size());
+    Mesh backCapMesh(backCap, normals, uvs);
+
+    normals.resize(silhouette.size());
+    uvs.resize(silhouette.size());
+    Mesh silhouetteMesh(silhouette, normals, uvs);
+
+    return { frontCapMesh, backCapMesh, silhouetteMesh };
 }
 
+#if 0
+
 Mesh calculateShadowVolume(glm::vec3 lightPos, const Mesh& input) {
+    // TODO: move Renderer::renderRenderable() to Renderable.
     // TODO: currently we don't use a model matrix hehe, but will use sometime!
     // lightPos = glm::inverse (modelMatrix) * lightPos;
 
@@ -121,35 +206,6 @@ Mesh calculateShadowVolume(glm::vec3 lightPos, const Mesh& input) {
 
     // maybe too slow, perhaps just using a vec<bool> is easier...
     std::unordered_set<std::pair<glm::vec4, glm::vec4>, DumbPairHash> contourEdges;
-
-    auto updateContourEdge = [&contourEdges, &vertices](auto edgeIndexes) {
-        DumbPairHash dumbHash;
-
-        auto edge = std::make_pair(vertices[edgeIndexes.first], vertices[edgeIndexes.second]);
-        std::hash<glm::vec4> vec4hash;
-
-        if (glm::length(edge.first) > glm::length(edge.second))
-            edge = std::make_pair(edge.second, edge.first);
-
-        {
-            DumbPairHash dumbHash;
-            std::printf("  evaluating edgeIndexes (%d, %d) = (<%g, %g, %g>, <%g, %g, %g>), hash = %zx\n",
-                        edgeIndexes.first, edgeIndexes.second,
-                        edge.first.x, edge.first.y, edge.first.z,
-                        edge.second.x, edge.second.y, edge.second.z),
-                        dumbHash(edge);
-        }
-
-        auto edgeIt = contourEdges.find(edge);
-
-        if (edgeIt != contourEdges.end()) {
-            std::printf("    already there, removing\n");
-            contourEdges.erase(edgeIt);
-        } else {
-            std::printf("    not there, inserting\n");
-            contourEdges.insert(edge);
-        }
-    };
 
     for (int i = 0; i < vertices.size() / 3; i++) {
         // for each triangle...
@@ -203,6 +259,8 @@ Mesh calculateShadowVolume(glm::vec3 lightPos, const Mesh& input) {
     return out;
 }
 
+#endif
+
 int main(int, char**) {
     std::printf("Hello world! Current directory: '%s'\n", std::filesystem::current_path().string().c_str());
 
@@ -211,16 +269,19 @@ int main(int, char**) {
     Renderer renderer(&camera);
     InputController input{};
 
-    auto mainMesh = Mesh::fromObjFile("assets/models/teapot.obj");
-    auto mainMat = FlatColorMaterial(glm::vec4(0.2f, 0.5f, 0.3, 1.0f));
+    glm::vec4 lightPos = glm::vec4(0.0f, 0.0f, -10.0f, 1.0f);
+
+    auto mainMesh = Mesh::fromObjFile("assets/models/torus.obj");
+    auto mainMat = ShadedColorMaterial(glm::vec4(0.2f, 0.5f, 0.3, 1.0f), lightPos);
     auto triangle = Renderable(&mainMesh, &mainMat);
-    auto otherMat = FlatColorMaterial(glm::vec4(0.1f, 0.1f, 0.3f, 1.0f));
 
-    glm::vec3 lightPos = glm::vec3(0.0f, 0.0f, -10000.0f);
+    auto indices = mainMesh.getIndices();
 
-    //Mesh shadowVolumeMesh = calculateShadowVolume(lightPos, mainMesh); 
+    auto [shadowFrontCapMesh, shadowBackCapMesh, shadowEdgeMesh] = calculateShadowVolume(lightPos, mainMesh); 
 
-    //auto shadowVolume = Renderable(&shadowVolumeMesh, &otherMat);
+    auto shadowFrontCap = Renderable(&shadowFrontCapMesh, &mainMat);
+    auto shadowBackCap = Renderable(&shadowBackCapMesh, &mainMat);
+    auto shadowEdge = Renderable(&shadowEdgeMesh, &mainMat);
 
     renderer.clearColor(glm::vec4(0.3, 0.8f, 0.2f, 1.0f));
 
@@ -228,11 +289,11 @@ int main(int, char**) {
 
     camera.setPosition(glm::vec3(0.0f, 0.0f, 2.0f));
 
-    long long count = 0;
+    uint8_t state = 1;
 
     while (!app.shouldQuit()) {
         DT(dt);
-        std::printf("\rdelta time: %f                        ", dt.get());
+        std::printf("\rdelta time: %3.8f\t\t\t", dt.get());
 
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
@@ -243,10 +304,36 @@ int main(int, char**) {
 
         updateCamera(camera, input, dt.get());
 
+        if (input.isPressed(Action::INTERACT)) {
+            state <<= 1;
+            if (state & 0b100000) state = 1;
+            std::printf("\ninteracted %x\n", state);
+            if (state & 0b000)
+                std::printf("nothing\n");
+            if (state & 0b001)
+                std::printf("shadow back cap\n");
+            if (state & 0b010)
+                std::printf("shadow edge\n");
+            if (state & 0b100)
+                std::printf("shadow front cap\n");
+            if (state & 0b1000)
+                std::printf("original\n");
+            if (state & 0b10000)
+                std::printf("original at infinity\n");
+        }
+
         renderer.clear();
 
-        renderer.drawRenderable(&triangle);
-        //renderer.drawRenderable(&shadowVolume);
+        if (state & 0b001)
+            renderer.drawRenderable(&shadowBackCap);
+        if (state & 0b010)
+            renderer.drawRenderable(&shadowEdge);
+        if (state & 0b100)
+            renderer.drawRenderable(&shadowFrontCap);
+        if (state & 0b1000)
+            renderer.drawRenderable(&triangle);
+        if (state & 0b10000)
+            renderer.drawRenderable(&triangle, indices.size(), indices.data());
 
         app.swapWindow();
 

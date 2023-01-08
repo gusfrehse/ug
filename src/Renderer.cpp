@@ -11,13 +11,17 @@
 Renderer::Renderer(Camera *camera) : mCamera(camera) {
     glEnable(GL_DEBUG_OUTPUT);
     glEnable(GL_DEPTH_TEST);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glLineWidth(2);
 }
 
 Renderer::~Renderer() = default;
 
 void Renderer::drawRenderable(Renderable *renderable) {
+    drawRenderable(renderable, renderable->getMesh()->numVertices, nullptr);
+}
+
+void Renderer::drawRenderable(Renderable *renderable, int numVertices, unsigned int indices[]) {
     auto material = renderable->getMaterial();
     auto mesh = renderable->getMesh();
 
@@ -34,9 +38,9 @@ void Renderer::drawRenderable(Renderable *renderable) {
     material->updateUniforms();
 
     if (mesh->isIndexed())
-        glDrawElements(GL_TRIANGLES, mesh->numVertices, GL_UNSIGNED_INT, nullptr);
+        glDrawElements(GL_TRIANGLES, numVertices, GL_UNSIGNED_INT, indices);
     else
-        glDrawArrays(GL_TRIANGLES, 0, mesh->numVertices);
+        glDrawArrays(GL_TRIANGLES, 0, numVertices);
 }
 
 void Renderer::clearColor(glm::vec4 color) {

@@ -20,6 +20,7 @@ private:
     std::vector<glm::vec4> mVertices;
     std::vector<glm::vec3> mNormals;
     std::vector<glm::vec2> mUvs;
+    std::vector<unsigned int> mIndices;
 
     GLuint mVao;
     GLuint mPositionVbo;
@@ -37,7 +38,7 @@ public:
          const std::vector<glm::vec2> &uvs);
 
     Mesh(const std::vector<glm::vec4> &vertices, const std::vector<glm::vec3> &normals,
-         const std::vector<glm::vec2> &uvs, const std::vector<int> indices);
+         const std::vector<glm::vec2> &uvs, const std::vector<unsigned int> indices);
 
     static Mesh fromObjFile(const std::string& path);
 
@@ -45,6 +46,7 @@ public:
     const std::vector<glm::vec4>& getVertices() const { return mVertices; }
     const std::vector<glm::vec3>& getNormals() const { return mNormals; }
     const std::vector<glm::vec2>& getUvs() const { return mUvs; }
+    const std::vector<unsigned int>& getIndices() const { return mIndices; }
     bool isIndexed() const;
 };
 

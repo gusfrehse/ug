@@ -164,3 +164,38 @@ void FlatColorMaterial::updateColor(glm::vec4 color) {
 void FlatColorMaterial::updateUniforms() {
     glUniform4f(mUniformLocation, mColor.x, mColor.y, mColor.z, mColor.w);
 }
+
+ShadedColorMaterial::ShadedColorMaterial(glm::vec4 color, glm::vec4 lightPos)
+    : Material("shaded_color_vertex.glsl", "shaded_color_fragment.glsl") {
+
+    mColorUniformLocation = glGetUniformLocation(this->getShaderProgram(), "uColor");
+    mLightPosUniformLocation = glGetUniformLocation(this->getShaderProgram(), "uLightPos");
+
+    if (mColorUniformLocation == -1) {
+        std::fprintf(stderr, "[-] ERROR: Couldn't get color uniform location in ShadedColorMaterial!\n");
+    }
+
+    if (mLightPosUniformLocation == -1) {
+        std::fprintf(stderr, "[-] ERROR: Couldn't get light pos uniform location in ShadedColorMaterial!\n");
+    }
+
+    mColor = color;
+    mLightPos = lightPos;
+    updateUniforms();
+}
+
+void ShadedColorMaterial::updateColor(glm::vec4 color) {
+    mColor = color;
+    updateUniforms();
+}
+
+void ShadedColorMaterial::updateLightPos(glm::vec4 lightPos) {
+    mLightPos = lightPos;
+    updateUniforms();
+}
+
+void ShadedColorMaterial::updateUniforms() {
+    glUniform4f(mColorUniformLocation, mColor.x, mColor.y, mColor.z, mColor.w);
+    glUniform4f(mLightPosUniformLocation, mLightPos.x, mLightPos.y, mLightPos.z, mLightPos.w);
+}
+

@@ -40,4 +40,17 @@ public:
     void updateUniforms() override;
 };
 
+class ShadedColorMaterial : public Material {
+    glm::vec4 mColor = glm::vec4(1.0f, 0.0f, 1.0f, 1.0f);
+    glm::vec4 mLightPos = glm::vec4(1.0f, 0.0f, 1.0f, 1.0f);
+    GLint mColorUniformLocation = -1;
+    GLint mLightPosUniformLocation = -1;
+
+public:
+    explicit ShadedColorMaterial(glm::vec4 color, glm::vec4 lightPos);
+    void updateColor(glm::vec4 color);
+    void updateLightPos(glm::vec4 lightPos);
+    void updateUniforms() override;
+};
+
 #endif //UG_MATERIAL_H
