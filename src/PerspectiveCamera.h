@@ -13,7 +13,6 @@ private:
     float mYaw = 0.0f;
     float mPitch = 0.0f;
     float mNearPlane = 0.01f;
-    float mFarPlane = 10.0;
     glm::mat4 mInverseViewMatrix;
 
     void recalculateProjectionMatrix() override;

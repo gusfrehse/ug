@@ -21,7 +21,7 @@ public:
     Renderer(const Renderer& renderer) = delete;
     ~Renderer();
 
-    void drawRenderable(Renderable *renderable, int numVertices, unsigned int indices[]);
+    void drawRenderable(Renderable *renderable, int numVertices, const unsigned int* indices);
     void drawRenderable(Renderable *renderable);
     void clear();
     void clearColor(glm::vec4 color);

@@ -23,8 +23,8 @@
 Mesh createTriangleMesh() {
     return Mesh({
                         glm::vec4(0.0f,-0.5f, 0.0f, 1.0f),
-                        glm::vec4(-0.5f, 0.5f, 0.0f, 1.0f),
-                        glm::vec4(0.5, 0.5, 0.0f, 1.0f)
+                        glm::vec4(-0.5f, 0.5f, 0.0f, 0.0f),
+                        glm::vec4(0.5, 0.5, 0.0f, 0.0f)
                 },
                 {
                         glm::vec3(0.0f, 0.0f, 1.0f),
@@ -35,7 +35,8 @@ Mesh createTriangleMesh() {
                         glm::vec2(0.5f, 0.0f),
                         glm::vec2(0.0f, 1.0f),
                         glm::vec2(1.0f, 1.0f),
-                }
+                },
+                { 0, 1, 2 }
     );
 }
 
@@ -83,29 +84,25 @@ void updateCamera(PerspectiveCamera& camera, InputController& input, float dt) {
         camera.lookRight(-sensitivity);
     }
 }
-std::tuple<Mesh, Mesh, Mesh> calculateShadowVolume(glm::vec4 lightPos, const Mesh& input) {
+std::tuple<std::vector<unsigned int>, std::vector<unsigned int>, std::vector<unsigned int>>
+calculateShadowVolume(glm::vec4 lightPos, const Mesh& input) {
     // TODO: currently we don't use a model matrix hehe, but will use sometime!
     // lightPos = glm::inverse (modelMatrix) * lightPos;
 
     if (!input.isIndexed()) {
-        printf("[-] ERROR: Volumes for non indexed meshes are not yet implemented\n");
+        printf("[-] ERROR: Volumes for non indexed meshes is not yet implemented\n");
         exit(1);
     }
-
-    auto vertices = input.getVertices();
-    auto normals = input.getNormals();
-    auto uvs = input.getUvs();
-    auto indices = input.getIndices();
+   auto indices = input.getIndices();
+   auto normals = input.getNormals();
+   auto vertices = input.getVertices();
 
     std::unordered_set<std::pair<int, int>, DumbPairHash> contourEdges;
 
-    std::printf("size of original vertices %d\n", vertices.size());
+    std::printf("size of original indices %d\n", indices.size());
 
-    auto updateContourEdge = [&contourEdges, &vertices](std::pair<int, int> edge) {
-        std::printf("  examining edge <%d, %d> = <(%3.3f, %3.3f, %3.3f), (%3.3f, %3.3f, %3.3f)>\n",
-                    edge.first, edge.second,
-                    vertices[edge.first].x, vertices[edge.first].y, vertices[edge.first].z,
-                    vertices[edge.second].x, vertices[edge.second].y, vertices[edge.second].z);
+    auto updateContourEdge = [&contourEdges](std::pair<unsigned int, unsigned int> edge) {
+        std::printf("examining edge %d %d\n", edge.first, edge.second);
         auto edgeIt = contourEdges.find(edge);
         if (edgeIt != contourEdges.end()) {
             std::printf("    already there, removing\n");
@@ -116,150 +113,52 @@ std::tuple<Mesh, Mesh, Mesh> calculateShadowVolume(glm::vec4 lightPos, const Mes
         }
     };
 
-    std::vector<glm::vec4> frontCap;
-    std::vector<glm::vec4> backCap;
-    std::vector<glm::vec4> silhouette;
+    std::vector<unsigned int> frontCap;
+    std::vector<unsigned int> backCap;
+    std::vector<unsigned int> silhouette;
 
     // for each face
     for (int i = 0; i < indices.size() / 3; i++) {
-        glm::vec3 averageNormal = (normals[i] + normals[i + 1] + normals[i + 2]) / 3.0f;
+        glm::vec3 averageNormal = (normals[indices[3 * i + 0]] +
+                                   normals[indices[3 * i + 1]] +
+                                   normals[indices[3 * i + 2]]) / 3.0f;
 
-        glm::vec4 averagePos = (vertices[i] + vertices[i + 1] + vertices[i + 2]) / 3.0f;
+        glm::vec4 averagePos = (vertices[indices[3 * i]] +
+                                vertices[indices[3 * i + 1]] +
+                                vertices[indices[3 * i + 2]]) / 3.0f;
 
         glm::vec3 lightDir = glm::vec3(averagePos - lightPos);
 
         if (glm::dot(lightDir, averageNormal) >= 0) {
             // front cap
-            frontCap.push_back(vertices[indices[i]]);
-            frontCap.push_back(vertices[indices[i + 1]]);
-            frontCap.push_back(vertices[indices[i + 2]]);
+            frontCap.push_back(indices[3 * i + 0]);
+            frontCap.push_back(indices[3 * i + 1]);
+            frontCap.push_back(indices[3 * i + 2]);
 
             // silhouette detection
-            updateContourEdge(std::minmax(indices[i + 0], indices[i + 1]));
-            updateContourEdge(std::minmax(indices[i + 1], indices[i + 2]));
-            updateContourEdge(std::minmax(indices[i + 2], indices[i + 0]));
+            updateContourEdge(std::minmax(indices[3 * i + 0], indices[3 * i + 1]));
+            updateContourEdge(std::minmax(indices[3 * i + 1], indices[3 * i + 2]));
+            updateContourEdge(std::minmax(indices[3 * i + 2], indices[3 * i + 0]));
         } else {
             // back cap
-            glm::vec4 a = vertices[indices[i]];
-            a.w = 0.0f;
-            glm::vec4 b = vertices[indices[i + 1]];
-            b.w = 0.0f;
-            glm::vec4 c = vertices[indices[i + 2]];
-            c.w = 0.0f;
-
-            backCap.push_back(b);
-            backCap.push_back(a);
-            backCap.push_back(c);
+            backCap.push_back(indices[3 * i + 0] + input.numVertices);
+            backCap.push_back(indices[3 * i + 1] + input.numVertices);
+            backCap.push_back(indices[3 * i + 2] + input.numVertices);
         }
     }
 
     for (const auto& [a, b] : contourEdges) {
-        glm::vec4 va(vertices[a]);
-        glm::vec4 va_inf = vertices[a] - lightPos;
-        va_inf.w = 0.0f;
+        silhouette.push_back(a);
+        silhouette.push_back(b);
+        silhouette.push_back(a + input.numVertices);
 
-        glm::vec4 vb(vertices[b]);
-        glm::vec4 vb_inf = vertices[b] - lightPos;
-        vb_inf.w = 0.0f;
-
-        silhouette.push_back(va);
-        silhouette.push_back(vb);
-        silhouette.push_back(va_inf);
-
-        silhouette.push_back(vb);
-        silhouette.push_back(vb_inf);
-        silhouette.push_back(va_inf);
+        silhouette.push_back(b);
+        silhouette.push_back(b + input.numVertices);
+        silhouette.push_back(a + input.numVertices);
     }
 
-    normals.resize(frontCap.size());
-    uvs.resize(frontCap.size());
-    Mesh frontCapMesh(frontCap, normals, uvs);
-
-    normals.resize(backCap.size());
-    uvs.resize(backCap.size());
-    Mesh backCapMesh(backCap, normals, uvs);
-
-    normals.resize(silhouette.size());
-    uvs.resize(silhouette.size());
-    Mesh silhouetteMesh(silhouette, normals, uvs);
-
-    return { frontCapMesh, backCapMesh, silhouetteMesh };
+    return { frontCap, backCap, silhouette };
 }
-
-#if 0
-
-Mesh calculateShadowVolume(glm::vec3 lightPos, const Mesh& input) {
-    // TODO: move Renderer::renderRenderable() to Renderable.
-    // TODO: currently we don't use a model matrix hehe, but will use sometime!
-    // lightPos = glm::inverse (modelMatrix) * lightPos;
-
-    if (input.isIndexed()) {
-        printf(" Volumes for indexed meshes are not yet implemented\n");
-        exit(1);
-    }
-
-    auto& vertices = input.getVertices();
-    auto& normals = input.getNormals();
-    auto& uvs = input.getUvs();
-
-    std::printf("size of original vertices %d\n", vertices.size());
-
-    // maybe too slow, perhaps just using a vec<bool> is easier...
-    std::unordered_set<std::pair<glm::vec4, glm::vec4>, DumbPairHash> contourEdges;
-
-    for (int i = 0; i < vertices.size() / 3; i++) {
-        // for each triangle...
-
-        glm::vec3 averagePos = (vertices[i] + vertices[i + 1] + vertices[i + 2]) / 3.0f;
-
-        // maybe bogus (they should be all the same?)
-        glm::vec3 averageNormal = (normals[i] + normals[i + 1] + normals[i + 2]) / 3.0f;
-
-        glm::vec3 lightDir = averagePos - lightPos;
-
-        if (glm::dot(lightDir, averageNormal) >= 0) {
-            updateContourEdge(std::make_pair(i + 0, i + 1));
-            updateContourEdge(std::make_pair(i + 1, i + 2));
-            updateContourEdge(std::make_pair(i + 2, i + 0));
-        }
-    }
-
-    // TODO: optimize this probably, done hastly.
-
-    std::printf("%d edges in the contour\n", contourEdges.size());
-
-
-    std::vector<glm::vec4> newVertices;
-    std::vector<glm::vec3> newNormals(4 * contourEdges.size(), glm::vec3(0.0f));
-    std::vector<glm::vec2> newUvs(4 * contourEdges.size(), glm::vec2(0.0f));
-
-    newVertices.reserve(2 * contourEdges.size());
-
-    for (const auto& [a, b] : contourEdges) {
-        // we need to add quad with two vertices at infinity?
-        glm::vec4 newVertexA = a - glm::vec4(lightPos, 0.0f);
-        newVertexA.w = 0.0f; // make it at infinity
-
-        glm::vec4 newVertexB = b - glm::vec4(lightPos, 0.0f);
-        newVertexB.w = 0.0f; // make it at infinity
-
-        newVertices.push_back(b); // counter clockwise while viewing from outside the volume.
-        newVertices.push_back(a);
-        newVertices.push_back(newVertexA);
-
-        newVertices.push_back(newVertexA);
-        newVertices.push_back(newVertexB);
-        newVertices.push_back(b);
-    }
-
-
-    // TODO: change vertices to become vec4, because we need points at infinity, also make it easier to make this mesh, without too much copying.
-    Mesh out = Mesh(newVertices, newNormals, newUvs);
-
-    return out;
-}
-
-#endif
 
 int main(int, char**) {
     std::printf("Hello world! Current directory: '%s'\n", std::filesystem::current_path().string().c_str());
@@ -269,19 +168,35 @@ int main(int, char**) {
     Renderer renderer(&camera);
     InputController input{};
 
-    glm::vec4 lightPos = glm::vec4(0.0f, 0.0f, -10.0f, 1.0f);
+    glm::vec4 lightPos = glm::vec4(3.0f, 1.0f, -10.0f, 1.0f);
 
     auto mainMesh = Mesh::fromObjFile("assets/models/torus.obj");
+    //auto mainMesh = createTriangleMesh();
     auto mainMat = ShadedColorMaterial(glm::vec4(0.2f, 0.5f, 0.3, 1.0f), lightPos);
     auto triangle = Renderable(&mainMesh, &mainMat);
 
     auto indices = mainMesh.getIndices();
+    indices.resize(indices.size() / 2);
 
-    auto [shadowFrontCapMesh, shadowBackCapMesh, shadowEdgeMesh] = calculateShadowVolume(lightPos, mainMesh); 
+    auto [shadowFrontCapIndices, shadowBackCapIndices, shadowEdgeIndices] = calculateShadowVolume(lightPos, mainMesh); 
 
-    auto shadowFrontCap = Renderable(&shadowFrontCapMesh, &mainMat);
-    auto shadowBackCap = Renderable(&shadowBackCapMesh, &mainMat);
-    auto shadowEdge = Renderable(&shadowEdgeMesh, &mainMat);
+    std::printf("shadow front cap indices:\n");
+    for (unsigned int i : shadowFrontCapIndices) {
+        std::printf(" %u,", i);
+    }
+    std::printf("\n");
+
+    std::printf("shadow back cap indices:\n");
+    for (unsigned int i : shadowBackCapIndices) {
+        std::printf(" %u,", i);
+    }
+    std::printf("\n");
+
+    std::printf("shadow edge indices:\n");
+    for (unsigned int i : shadowEdgeIndices) {
+        std::printf(" %u", i);
+    }
+    std::printf("\n");
 
     renderer.clearColor(glm::vec4(0.3, 0.8f, 0.2f, 1.0f));
 
@@ -319,17 +234,17 @@ int main(int, char**) {
             if (state & 0b1000)
                 std::printf("original\n");
             if (state & 0b10000)
-                std::printf("original at infinity\n");
+                std::printf("half original\n");
         }
 
         renderer.clear();
 
         if (state & 0b001)
-            renderer.drawRenderable(&shadowBackCap);
+            renderer.drawRenderable(&triangle, shadowBackCapIndices.size(), shadowBackCapIndices.data());
         if (state & 0b010)
-            renderer.drawRenderable(&shadowEdge);
+            renderer.drawRenderable(&triangle, shadowEdgeIndices.size(), shadowEdgeIndices.data());
         if (state & 0b100)
-            renderer.drawRenderable(&shadowFrontCap);
+            renderer.drawRenderable(&triangle, shadowFrontCapIndices.size(), shadowFrontCapIndices.data());
         if (state & 0b1000)
             renderer.drawRenderable(&triangle);
         if (state & 0b10000)
@@ -339,4 +254,6 @@ int main(int, char**) {
 
         input.reload();
     }
+
+    std::printf("\nbye!\n");
 }

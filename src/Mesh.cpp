@@ -49,9 +49,9 @@ Mesh::Mesh(const std::vector<glm::vec4> &vertices, const std::vector<glm::vec3>&
     mVao = createVAO();
     glBindVertexArray(mVao);
 
-    mPositionVbo = createBufferObject(vertices);
-    mNormalVbo = createBufferObject(normals);
-    mUvVbo = createBufferObject(uvs);
+    mPositionVbo = createBufferObject(mVertices);
+    mNormalVbo = createBufferObject(mNormals);
+    mUvVbo = createBufferObject(mUvs);
 
     glVertexArrayAttribFormat(mVao, 0, 4, GL_FLOAT, GL_FALSE, 0);
     glVertexArrayAttribFormat(mVao, 1, 3, GL_FLOAT, GL_FALSE, 0);
@@ -73,13 +73,12 @@ Mesh::Mesh(const std::vector<glm::vec4> &vertices, const std::vector<glm::vec3>&
 Mesh::Mesh(const std::vector<glm::vec4> &vertices, const std::vector<glm::vec3> &normals,
      const std::vector<glm::vec2> &uvs, const std::vector<unsigned int> indices)
 : Mesh(vertices, normals, uvs)  {
-    mEbo = createBufferObject(indices);
+    //mEbo = createBufferObject(indices);
 
     mIndices = indices;
 
-    glVertexArrayElementBuffer(mVao, mEbo);
+    //glVertexArrayElementBuffer(mVao, mEbo);
 
-    numVertices = indices.size();
     mIndexed = true;
  }
 
@@ -103,12 +102,7 @@ Mesh Mesh::fromObjFile(const std::string& path) {
     std::vector<glm::vec2> uvs(result.attributes.positions.size() / 3);
     std::vector<unsigned int> indices;
 
-    std::printf("positions in order (index | pos):\n");
     for (int i = 0; i < result.attributes.positions.size() / 3; i++) {
-        std::printf("  %d | % 2.4f % 2.4f % 2.4f\n", i, result.attributes.positions[3 * i],
-                                                        result.attributes.positions[3 * i + 1],
-                                                        result.attributes.positions[3 * i + 2]);
-
         vertices[i] = glm::vec4(result.attributes.positions[3 * i + 0],
                                 result.attributes.positions[3 * i + 1],
                                 result.attributes.positions[3 * i + 2],

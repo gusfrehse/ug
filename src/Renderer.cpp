@@ -11,6 +11,8 @@
 Renderer::Renderer(Camera *camera) : mCamera(camera) {
     glEnable(GL_DEBUG_OUTPUT);
     glEnable(GL_DEPTH_TEST);
+    //glEnable(GL_CULL_FACE);
+    //glCullFace(GL_BACK);
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glLineWidth(2);
 }
@@ -18,10 +20,11 @@ Renderer::Renderer(Camera *camera) : mCamera(camera) {
 Renderer::~Renderer() = default;
 
 void Renderer::drawRenderable(Renderable *renderable) {
-    drawRenderable(renderable, renderable->getMesh()->numVertices, nullptr);
+    const auto& indices = renderable->getMesh()->getIndices();
+    drawRenderable(renderable, indices.size(), indices.data());
 }
 
-void Renderer::drawRenderable(Renderable *renderable, int numVertices, unsigned int indices[]) {
+void Renderer::drawRenderable(Renderable *renderable, int numVertices, const unsigned int* indices) {
     auto material = renderable->getMaterial();
     auto mesh = renderable->getMesh();
 
