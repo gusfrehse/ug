@@ -8,11 +8,38 @@
 #include "glm/vec4.hpp"
 #include "glm/gtc/type_ptr.hpp"
 
+void debugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *param) {
+    const char *typeStr = "[i]";
+    const char *severetyStr = "nopers";
+
+    if (type == GL_DEBUG_TYPE_ERROR) 
+        typeStr = "[-]";
+
+    if (severity == GL_DEBUG_SEVERITY_NOTIFICATION)
+        severetyStr = "NOTIFICATION ...";
+    else if (severity == GL_DEBUG_SEVERITY_LOW)
+        severetyStr = "LOW !";
+    else if (severity == GL_DEBUG_SEVERITY_MEDIUM)
+        severetyStr = "MEDIUM !!";
+    else if (severity == GL_DEBUG_SEVERITY_HIGH)
+        severetyStr = "HIGH !!!";
+
+    std::fprintf(stderr, "%s OPENGL DEBUG: severity = %s id = 0x%x: %s\n",
+                 typeStr, severetyStr, id, message);
+
+}
+
 Renderer::Renderer(Camera *camera) : mCamera(camera) {
     glEnable(GL_DEBUG_OUTPUT);
-    glEnable(GL_DEPTH_TEST);
-    //glEnable(GL_CULL_FACE);
+    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+    glDebugMessageCallback(debugCallback, 0);
+
+    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_DEPTH_CLAMP);
+
+    glEnable(GL_CULL_FACE);
     //glCullFace(GL_BACK);
+
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glLineWidth(2);
 }

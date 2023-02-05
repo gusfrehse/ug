@@ -9,5 +9,5 @@ in float vDepth;
 
 void main() {
    float coef = 1.0; // / (vDepth * vDepth * 0.01 + 1.0);
-   fragColor = vec4(vNormal, 1.0);
+   fragColor = uColor;
 }

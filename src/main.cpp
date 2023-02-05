@@ -22,14 +22,14 @@
 
 Mesh createTriangleMesh() {
     return Mesh({
-                        glm::vec4(0.0f,-0.5f, 0.0f, 1.0f),
-                        glm::vec4(-0.5f, 0.5f, 0.0f, 0.0f),
-                        glm::vec4(0.5, 0.5, 0.0f, 0.0f)
+                        glm::vec4( 0.0f,  5.0f, 0.0f, 1.0f),
+                        glm::vec4(-5.0f, -5.0f, 0.0f, 1.0f),
+                        glm::vec4( 5.0f, -5.0f, 0.0f, 1.0f)
                 },
                 {
-                        glm::vec3(0.0f, 0.0f, 1.0f),
-                        glm::vec3(0.0f, 0.0f, 1.0f),
-                        glm::vec3(0.0f, 0.0f, 1.0f),
+                        glm::vec3(0.0f, 0.0f, -1.0f),
+                        glm::vec3(0.0f, 0.0f, -1.0f),
+                        glm::vec3(0.0f, 0.0f, -1.0f),
                 },
                 {
                         glm::vec2(0.5f, 0.0f),
@@ -84,6 +84,7 @@ void updateCamera(PerspectiveCamera& camera, InputController& input, float dt) {
         camera.lookRight(-sensitivity);
     }
 }
+
 std::tuple<std::vector<unsigned int>, std::vector<unsigned int>, std::vector<unsigned int>>
 calculateShadowVolume(glm::vec4 lightPos, const Mesh& input) {
     // TODO: currently we don't use a model matrix hehe, but will use sometime!
@@ -99,7 +100,8 @@ calculateShadowVolume(glm::vec4 lightPos, const Mesh& input) {
 
     std::unordered_set<std::pair<int, int>, DumbPairHash> contourEdges;
 
-    std::printf("size of original indices %d\n", indices.size());
+    std::printf("size of original indices %zu\n", indices.size());
+    std::printf("light pos: %g %g %g %g\n", lightPos.x, lightPos.y, lightPos.z, lightPos.w);
 
     auto updateContourEdge = [&contourEdges](std::pair<unsigned int, unsigned int> edge) {
         std::printf("examining edge %d %d\n", edge.first, edge.second);
@@ -129,7 +131,7 @@ calculateShadowVolume(glm::vec4 lightPos, const Mesh& input) {
 
         glm::vec3 lightDir = glm::vec3(averagePos - lightPos);
 
-        if (glm::dot(lightDir, averageNormal) >= 0) {
+        if (glm::dot(lightDir, averageNormal) <= 0) {
             // front cap
             frontCap.push_back(indices[3 * i + 0]);
             frontCap.push_back(indices[3 * i + 1]);
@@ -168,15 +170,14 @@ int main(int, char**) {
     Renderer renderer(&camera);
     InputController input{};
 
-    glm::vec4 lightPos = glm::vec4(3.0f, 1.0f, -10.0f, 1.0f);
+    glm::vec4 lightPos = glm::vec4(0.0f, 10.0f, 0.0f, 1.0f);
 
     auto mainMesh = Mesh::fromObjFile("assets/models/torus.obj");
     //auto mainMesh = createTriangleMesh();
-    auto mainMat = ShadedColorMaterial(glm::vec4(0.2f, 0.5f, 0.3, 1.0f), lightPos);
-    auto triangle = Renderable(&mainMesh, &mainMat);
+    //auto coordinateSystemMesh = Mesh::fromObjFile("assets/models/coordinate_system.obj");
+    auto mainMat = ShadedColorMaterial(glm::vec4(0.3, 0.4, 0.5, 1.0), lightPos);
 
-    auto indices = mainMesh.getIndices();
-    indices.resize(indices.size() / 2);
+    auto triangle = Renderable(&mainMesh, &mainMat);
 
     auto [shadowFrontCapIndices, shadowBackCapIndices, shadowEdgeIndices] = calculateShadowVolume(lightPos, mainMesh); 
 
@@ -221,34 +222,28 @@ int main(int, char**) {
 
         if (input.isPressed(Action::INTERACT)) {
             state <<= 1;
-            if (state & 0b100000) state = 1;
+            if (state & 0b10000) state = 1;
             std::printf("\ninteracted %x\n", state);
-            if (state & 0b000)
-                std::printf("nothing\n");
-            if (state & 0b001)
-                std::printf("shadow back cap\n");
-            if (state & 0b010)
-                std::printf("shadow edge\n");
-            if (state & 0b100)
-                std::printf("shadow front cap\n");
-            if (state & 0b1000)
+            if (state & 0b00001)
                 std::printf("original\n");
-            if (state & 0b10000)
-                std::printf("half original\n");
+            if (state & 0b00010)
+                std::printf("shadow front cap\n");
+            if (state & 0b00100)
+                std::printf("shadow edge\n");
+            if (state & 0b01000)
+                std::printf("shadow back cap\n");
         }
 
         renderer.clear();
 
-        if (state & 0b001)
-            renderer.drawRenderable(&triangle, shadowBackCapIndices.size(), shadowBackCapIndices.data());
-        if (state & 0b010)
-            renderer.drawRenderable(&triangle, shadowEdgeIndices.size(), shadowEdgeIndices.data());
-        if (state & 0b100)
-            renderer.drawRenderable(&triangle, shadowFrontCapIndices.size(), shadowFrontCapIndices.data());
-        if (state & 0b1000)
+        if (state & 0b0001)
             renderer.drawRenderable(&triangle);
-        if (state & 0b10000)
-            renderer.drawRenderable(&triangle, indices.size(), indices.data());
+        if (state & 0b0010)
+            renderer.drawRenderable(&triangle, shadowFrontCapIndices.size(), shadowFrontCapIndices.data());
+        if (state & 0b0100)
+            renderer.drawRenderable(&triangle, shadowEdgeIndices.size(), shadowEdgeIndices.data());
+        if (state & 0b1000)
+            renderer.drawRenderable(&triangle, shadowBackCapIndices.size(), shadowBackCapIndices.data());
 
         app.swapWindow();
 

@@ -10,6 +10,7 @@
 
 void PerspectiveCamera::recalculateProjectionMatrix() {
     mProjectionMatrix = glm::infinitePerspective(mFov, mAspectRatio, mNearPlane);
+    //mProjectionMatrix = glm::perspective(mFov, mAspectRatio, mNearPlane, 1000.0f);
 }
 
 void PerspectiveCamera::recalculateViewMatrix() {

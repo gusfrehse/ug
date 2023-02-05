@@ -158,6 +158,7 @@ FlatColorMaterial::FlatColorMaterial(glm::vec4 col)
 
 void FlatColorMaterial::updateColor(glm::vec4 color) {
     mColor = color;
+    glUseProgram(getShaderProgram());
     updateUniforms();
 }
 
@@ -181,6 +182,8 @@ ShadedColorMaterial::ShadedColorMaterial(glm::vec4 color, glm::vec4 lightPos)
 
     mColor = color;
     mLightPos = lightPos;
+
+    glUseProgram(getShaderProgram());
     updateUniforms();
 }
 
@@ -191,6 +194,7 @@ void ShadedColorMaterial::updateColor(glm::vec4 color) {
 
 void ShadedColorMaterial::updateLightPos(glm::vec4 lightPos) {
     mLightPos = lightPos;
+    glUseProgram(getShaderProgram());
     updateUniforms();
 }
 
