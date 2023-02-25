@@ -22,6 +22,7 @@ enum class Action : uint8_t {
     LOOK_LEFT,
     LOOK_RIGHT,
     INTERACT,
+    EXIT,
     COUNT
 };
 
@@ -39,10 +40,14 @@ private:
         {SDLK_h,      Action::LOOK_LEFT},
         {SDLK_l,      Action::LOOK_RIGHT},
         {SDLK_e,      Action::INTERACT},
+        {SDLK_ESCAPE, Action::EXIT},
     };
 
     std::vector<bool> mPressed;
     std::vector<bool> mHolded;
+
+    float mMouseX = 0;
+    float mMouseY = 0;
 
 public:
     explicit InputController();
@@ -53,6 +58,9 @@ public:
     bool isActive(Action a);
     bool isPressed(Action a);
     bool isHolded(Action a);
+
+    float getMouseDeltaX();
+    float getMouseDeltaY();
 
     void processEvent(SDL_Event& event);
 };

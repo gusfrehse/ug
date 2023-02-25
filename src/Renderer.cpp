@@ -34,14 +34,14 @@ Renderer::Renderer(Camera *camera) : mCamera(camera) {
     glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
     glDebugMessageCallback(debugCallback, 0);
 
-    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_DEPTH_TEST);
     glEnable(GL_DEPTH_CLAMP);
 
     glEnable(GL_CULL_FACE);
     //glCullFace(GL_BACK);
 
-    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    glLineWidth(2);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glLineWidth(1);
 }
 
 Renderer::~Renderer() = default;

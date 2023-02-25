@@ -11,9 +11,11 @@ uniform vec4 uLightPos;
 
 out vec3 vNormal;
 out float vDepth;
+out vec4 vLightPos;
 
 void main() {
     vNormal = aNormal;
     gl_Position = uProjection * uView * uModel * (aPos.w == 0 ? aPos * uLightPos.w - uLightPos : aPos);
     vDepth = gl_Position.w;
+    vLightPos = uLightPos;
  }

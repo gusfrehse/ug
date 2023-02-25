@@ -23,6 +23,7 @@ public:
     void processEvent(SDL_Event event);
 
     bool shouldQuit() const;
+    bool quit();
 
     void swapWindow();
 

@@ -27,6 +27,8 @@ App::App(int width, int height) : mWidth{width}, mHeight{height} {
         exit(-1);
     }
 
+    SDL_SetRelativeMouseMode(SDL_TRUE); 
+
     mContext = SDL_GL_CreateContext(mWindow);
 
     SDL_GL_SetSwapInterval(0);
@@ -64,4 +66,8 @@ void App::processEvent(SDL_Event event) {
 
 bool App::shouldQuit() const {
     return mShouldQuit;
+}
+
+bool App::quit() {
+    mShouldQuit = true;
 }

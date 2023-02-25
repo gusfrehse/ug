@@ -29,6 +29,9 @@ void InputController::reload() {
     for (int i = 0; i < static_cast<int>(Action::COUNT); i++) {
         mPressed[i] = false;
     }
+
+    mMouseX = 0.0f;
+    mMouseY = 0.0f;
 }
 
 /// You probably don't really want this function.
@@ -46,6 +49,14 @@ bool InputController::isHolded(Action a) {
     return mHolded[static_cast<int>(a)];
 }
 
+float InputController::getMouseDeltaX() {
+    return mMouseX;
+}
+
+float InputController::getMouseDeltaY() {
+    return mMouseY;
+}
+
 void InputController::processEvent(SDL_Event& event) {
     if (event.type == SDL_KEYDOWN) {
         keyDown(event.key.keysym.sym);
@@ -53,6 +64,11 @@ void InputController::processEvent(SDL_Event& event) {
 
     if (event.type == SDL_KEYUP) {
         keyUp(event.key.keysym.sym);
+    }
+
+    if (event.type == SDL_MOUSEMOTION) {
+        mMouseX += event.motion.xrel;
+        mMouseY += event.motion.yrel;
     }
 }
 

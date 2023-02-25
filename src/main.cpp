@@ -66,7 +66,7 @@ void updateCamera(PerspectiveCamera& camera, InputController& input, float dt) {
         camera.moveUp(-speed);
     }
 
-    float sensitivity = 0.1f * dt;
+    float sensitivity = 1.0f * dt;
 
     if (input.isHolded(Action::LOOK_UP)) {
         camera.lookUp(sensitivity);
@@ -83,11 +83,14 @@ void updateCamera(PerspectiveCamera& camera, InputController& input, float dt) {
     if (input.isHolded(Action::LOOK_LEFT)) {
         camera.lookRight(-sensitivity);
     }
+
+    camera.lookRight(sensitivity * input.getMouseDeltaX());
+    camera.lookUp(-sensitivity * input.getMouseDeltaY());
 }
 
 std::tuple<std::vector<unsigned int>, std::vector<unsigned int>, std::vector<unsigned int>>
 calculateShadowVolume(glm::vec4 lightPos, const Mesh& input) {
-    // TODO: currently we don't use a model matrix hehe, but will use sometime!
+    // TODO: currently we don't use a model matrix heheh, but will use sometime!
     // lightPos = glm::inverse (modelMatrix) * lightPos;
 
     if (!input.isIndexed()) {
@@ -104,13 +107,13 @@ calculateShadowVolume(glm::vec4 lightPos, const Mesh& input) {
     std::printf("light pos: %g %g %g %g\n", lightPos.x, lightPos.y, lightPos.z, lightPos.w);
 
     auto updateContourEdge = [&contourEdges](std::pair<unsigned int, unsigned int> edge) {
-        std::printf("examining edge %d %d\n", edge.first, edge.second);
+        //std::printf("examining edge %d %d\n", edge.first, edge.second);
         auto edgeIt = contourEdges.find(edge);
         if (edgeIt != contourEdges.end()) {
-            std::printf("    already there, removing\n");
+            //std::printf("    already there, removing\n");
             contourEdges.erase(edgeIt);
         } else {
-            std::printf("    not there, inserting\n");
+            //std::printf("    not there, inserting\n");
             contourEdges.insert(edge);
         }
     };
@@ -150,13 +153,13 @@ calculateShadowVolume(glm::vec4 lightPos, const Mesh& input) {
     }
 
     for (const auto& [a, b] : contourEdges) {
-        silhouette.push_back(a);
         silhouette.push_back(b);
+        silhouette.push_back(a);
         silhouette.push_back(a + input.numVertices);
 
         silhouette.push_back(b);
-        silhouette.push_back(b + input.numVertices);
         silhouette.push_back(a + input.numVertices);
+        silhouette.push_back(b + input.numVertices);
     }
 
     return { frontCap, backCap, silhouette };
@@ -172,8 +175,8 @@ int main(int, char**) {
 
     glm::vec4 lightPos = glm::vec4(0.0f, 10.0f, 0.0f, 1.0f);
 
-    auto mainMesh = Mesh::fromObjFile("assets/models/torus.obj");
-    //auto mainMesh = createTriangleMesh();
+    //auto mainMesh = Mesh::fromObjFile("assets/models/torus.obj");
+    auto mainMesh = createTriangleMesh();
     //auto coordinateSystemMesh = Mesh::fromObjFile("assets/models/coordinate_system.obj");
     auto mainMat = ShadedColorMaterial(glm::vec4(0.3, 0.4, 0.5, 1.0), lightPos);
 
@@ -181,25 +184,25 @@ int main(int, char**) {
 
     auto [shadowFrontCapIndices, shadowBackCapIndices, shadowEdgeIndices] = calculateShadowVolume(lightPos, mainMesh); 
 
-    std::printf("shadow front cap indices:\n");
-    for (unsigned int i : shadowFrontCapIndices) {
-        std::printf(" %u,", i);
-    }
-    std::printf("\n");
+    //std::printf("shadow front cap indices:\n");
+    //for (unsigned int i : shadowFrontCapIndices) {
+    //    std::printf(" %u,", i);
+    //}
+    //std::printf("\n");
 
-    std::printf("shadow back cap indices:\n");
-    for (unsigned int i : shadowBackCapIndices) {
-        std::printf(" %u,", i);
-    }
-    std::printf("\n");
+    //std::printf("shadow back cap indices:\n");
+    //for (unsigned int i : shadowBackCapIndices) {
+    //    std::printf(" %u,", i);
+    //}
+    //std::printf("\n");
 
-    std::printf("shadow edge indices:\n");
-    for (unsigned int i : shadowEdgeIndices) {
-        std::printf(" %u", i);
-    }
-    std::printf("\n");
+    //std::printf("shadow edge indices:\n");
+    //for (unsigned int i : shadowEdgeIndices) {
+    //    std::printf(" %u", i);
+    //}
+    //std::printf("\n");
 
-    renderer.clearColor(glm::vec4(0.3, 0.8f, 0.2f, 1.0f));
+    renderer.clearColor(glm::vec4(0.03, 0.04f, 0.03f, 1.0f));
 
     mainMat.updateColor(glm::vec4(0.1f, 0.2f, 0.6f, 1.0f));
 
@@ -216,6 +219,10 @@ int main(int, char**) {
             app.processEvent(event);
             camera.processEvent(event);
             input.processEvent(event);
+        }
+
+        if (input.isActive(Action::EXIT)) {
+            app.quit();
         }
 
         updateCamera(camera, input, dt.get());
@@ -236,6 +243,20 @@ int main(int, char**) {
 
         renderer.clear();
 
+        mainMat.updateColor(glm::vec4(0.8, 0.6, 0.3, 1.0));
+        glCullFace(GL_FRONT);
+        if (state & 0b0001)
+            renderer.drawRenderable(&triangle);
+        if (state & 0b0010)
+            renderer.drawRenderable(&triangle, shadowFrontCapIndices.size(), shadowFrontCapIndices.data());
+        if (state & 0b0100)
+            renderer.drawRenderable(&triangle, shadowEdgeIndices.size(), shadowEdgeIndices.data());
+        if (state & 0b1000)
+            renderer.drawRenderable(&triangle, shadowBackCapIndices.size(), shadowBackCapIndices.data());
+            
+        mainMat.updateColor(glm::vec4(0.3, 0.3, 0.7, 1.0));
+
+        glCullFace(GL_BACK);
         if (state & 0b0001)
             renderer.drawRenderable(&triangle);
         if (state & 0b0010)
