@@ -124,39 +124,50 @@ calculateShadowVolume(glm::vec4 lightPos, const Mesh& input) {
 
     // for each face
     for (int i = 0; i < indices.size() / 3; i++) {
-        glm::vec3 averageNormal = (normals[indices[3 * i + 0]] +
+        glm::vec3 averageNormal = glm::normalize(normals[indices[3 * i + 0]] +
                                    normals[indices[3 * i + 1]] +
-                                   normals[indices[3 * i + 2]]) / 3.0f;
+                                   normals[indices[3 * i + 2]]);
 
         glm::vec4 averagePos = (vertices[indices[3 * i]] +
                                 vertices[indices[3 * i + 1]] +
                                 vertices[indices[3 * i + 2]]) / 3.0f;
 
-        glm::vec3 lightDir = glm::vec3(averagePos - lightPos);
+        glm::vec3 lightDir = glm::normalize(glm::vec3(averagePos - lightPos));
+        
+        std::printf("light dir : %2.2f %2.2f %2.2f \n average normal: %2.2f %2.2f %2.2f\n", lightDir.x, lightDir.y, lightDir.z, averageNormal.x, averageNormal.y, averageNormal.z);
+        std::printf("dot: %2.2f\n", glm::dot(lightDir, averageNormal));
 
         if (glm::dot(lightDir, averageNormal) <= 0) {
             // front cap
+            std::printf("adding edges to front cap: \n");
+            std::printf("\t %d %d %d\n", indices[3 * i + 0], indices[3 * i + 1], indices[3 * i + 2]);
             frontCap.push_back(indices[3 * i + 0]);
             frontCap.push_back(indices[3 * i + 1]);
             frontCap.push_back(indices[3 * i + 2]);
+
+            // back cap
+            std::printf("adding edges to back cap: \n");
+            std::printf("\t %d_inf %d_inf %d_inf\n", indices[3 * i + 0], indices[3 * i + 1], indices[3 * i + 2]);
+            backCap.push_back(indices[3 * i + 0] + input.numVertices);
+            backCap.push_back(indices[3 * i + 1] + input.numVertices);
+            backCap.push_back(indices[3 * i + 2] + input.numVertices);
 
             // silhouette detection
             updateContourEdge(std::minmax(indices[3 * i + 0], indices[3 * i + 1]));
             updateContourEdge(std::minmax(indices[3 * i + 1], indices[3 * i + 2]));
             updateContourEdge(std::minmax(indices[3 * i + 2], indices[3 * i + 0]));
         } else {
-            // back cap
-            backCap.push_back(indices[3 * i + 0] + input.numVertices);
-            backCap.push_back(indices[3 * i + 1] + input.numVertices);
-            backCap.push_back(indices[3 * i + 2] + input.numVertices);
         }
     }
 
     for (const auto& [a, b] : contourEdges) {
+        std::printf("adding edges to contour: \n");
+        std::printf("\t %d %d %d_inf", b, a, a);
         silhouette.push_back(b);
         silhouette.push_back(a);
         silhouette.push_back(a + input.numVertices);
 
+        std::printf("\t %2.2f %2.2f_inf %2.2f_inf\n", b, a, b);
         silhouette.push_back(b);
         silhouette.push_back(a + input.numVertices);
         silhouette.push_back(b + input.numVertices);
@@ -173,10 +184,10 @@ int main(int, char**) {
     Renderer renderer(&camera);
     InputController input{};
 
-    glm::vec4 lightPos = glm::vec4(0.0f, 10.0f, 0.0f, 1.0f);
+    glm::vec4 lightPos = glm::vec4(0.0f, -10.0f, 0.0f, 1.0f);
 
-    //auto mainMesh = Mesh::fromObjFile("assets/models/torus.obj");
-    auto mainMesh = createTriangleMesh();
+    auto mainMesh = Mesh::fromObjFile("assets/models/tetrahedron.obj");
+    //auto mainMesh = createTriangleMesh();
     //auto coordinateSystemMesh = Mesh::fromObjFile("assets/models/coordinate_system.obj");
     auto mainMat = ShadedColorMaterial(glm::vec4(0.3, 0.4, 0.5, 1.0), lightPos);
 
@@ -212,7 +223,7 @@ int main(int, char**) {
 
     while (!app.shouldQuit()) {
         DT(dt);
-        std::printf("\rdelta time: %3.8f\t\t\t", dt.get());
+        //std::printf("\rdelta time: %3.8f\t\t\t", dt.get());
 
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
@@ -251,8 +262,13 @@ int main(int, char**) {
             renderer.drawRenderable(&triangle, shadowFrontCapIndices.size(), shadowFrontCapIndices.data());
         if (state & 0b0100)
             renderer.drawRenderable(&triangle, shadowEdgeIndices.size(), shadowEdgeIndices.data());
-        if (state & 0b1000)
+        if (state & 0b1000) {
+            glDisable(GL_DEPTH_TEST);
+            glEnable(GL_DEPTH_CLAMP);
             renderer.drawRenderable(&triangle, shadowBackCapIndices.size(), shadowBackCapIndices.data());
+            glEnable(GL_DEPTH_TEST);
+            glDisable(GL_DEPTH_CLAMP);
+        }
             
         mainMat.updateColor(glm::vec4(0.3, 0.3, 0.7, 1.0));
 
@@ -263,8 +279,13 @@ int main(int, char**) {
             renderer.drawRenderable(&triangle, shadowFrontCapIndices.size(), shadowFrontCapIndices.data());
         if (state & 0b0100)
             renderer.drawRenderable(&triangle, shadowEdgeIndices.size(), shadowEdgeIndices.data());
-        if (state & 0b1000)
+        if (state & 0b1000) {
+            glDisable(GL_DEPTH_TEST);
+            glEnable(GL_DEPTH_CLAMP);
             renderer.drawRenderable(&triangle, shadowBackCapIndices.size(), shadowBackCapIndices.data());
+            glEnable(GL_DEPTH_TEST);
+            glDisable(GL_DEPTH_CLAMP);
+        }
 
         app.swapWindow();
 
