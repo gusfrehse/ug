@@ -15,6 +15,8 @@ out vec4 vLightPos;
 
 void main() {
     vNormal = aNormal;
+    // aPos.w == 0 -> vertex at infinity -> we need to project in the direction of the light.
+    // uLightPos.w = 1.0 -> projectionDirection == pos - lightPos
     gl_Position = uProjection * uView * uModel * (aPos.w == 0 ? aPos * uLightPos.w - uLightPos : aPos);
     vDepth = gl_Position.w;
     vLightPos = uLightPos;

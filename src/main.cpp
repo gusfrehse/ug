@@ -107,8 +107,9 @@ calculateShadowVolume(glm::vec4 lightPos, const Mesh& input) {
     std::printf("light pos: %g %g %g %g\n", lightPos.x, lightPos.y, lightPos.z, lightPos.w);
 
     auto updateContourEdge = [&contourEdges](std::pair<unsigned int, unsigned int> edge) {
+        auto opEdge = std::make_pair(edge.second, edge.first);
         //std::printf("examining edge %d %d\n", edge.first, edge.second);
-        auto edgeIt = contourEdges.find(edge);
+        auto edgeIt = contourEdges.find(opEdge);
         if (edgeIt != contourEdges.end()) {
             //std::printf("    already there, removing\n");
             contourEdges.erase(edgeIt);
@@ -153,21 +154,20 @@ calculateShadowVolume(glm::vec4 lightPos, const Mesh& input) {
             backCap.push_back(indices[3 * i + 2] + input.numVertices);
 
             // silhouette detection
-            updateContourEdge(std::minmax(indices[3 * i + 0], indices[3 * i + 1]));
-            updateContourEdge(std::minmax(indices[3 * i + 1], indices[3 * i + 2]));
-            updateContourEdge(std::minmax(indices[3 * i + 2], indices[3 * i + 0]));
-        } else {
+            updateContourEdge(std::make_pair(indices[3 * i + 0], indices[3 * i + 1]));
+            updateContourEdge(std::make_pair(indices[3 * i + 1], indices[3 * i + 2]));
+            updateContourEdge(std::make_pair(indices[3 * i + 2], indices[3 * i + 0]));
         }
     }
 
     for (const auto& [a, b] : contourEdges) {
         std::printf("adding edges to contour: \n");
-        std::printf("\t %d %d %d_inf", b, a, a);
+        std::printf("\t %d %d %d_inf\n", b, a, a);
         silhouette.push_back(b);
         silhouette.push_back(a);
         silhouette.push_back(a + input.numVertices);
 
-        std::printf("\t %2.2f %2.2f_inf %2.2f_inf\n", b, a, b);
+        std::printf("\t %d %d_inf %d_inf\n", b, a, b);
         silhouette.push_back(b);
         silhouette.push_back(a + input.numVertices);
         silhouette.push_back(b + input.numVertices);
@@ -184,14 +184,16 @@ int main(int, char**) {
     Renderer renderer(&camera);
     InputController input{};
 
-    glm::vec4 lightPos = glm::vec4(0.0f, -10.0f, 0.0f, 1.0f);
+    glm::vec4 lightPos = glm::vec4(10.0f, 0.0f, 0.0f, 1.0f);
 
-    auto mainMesh = Mesh::fromObjFile("assets/models/tetrahedron.obj");
+    auto mainMesh = Mesh::fromObjFile("assets/models/torus.obj");
+    auto otherMesh = Mesh::fromObjFile("assets/models/coordinate_system.obj");
     //auto mainMesh = createTriangleMesh();
     //auto coordinateSystemMesh = Mesh::fromObjFile("assets/models/coordinate_system.obj");
     auto mainMat = ShadedColorMaterial(glm::vec4(0.3, 0.4, 0.5, 1.0), lightPos);
 
     auto triangle = Renderable(&mainMesh, &mainMat);
+    auto coord = Renderable(&otherMesh, &mainMat);
 
     auto [shadowFrontCapIndices, shadowBackCapIndices, shadowEdgeIndices] = calculateShadowVolume(lightPos, mainMesh); 
 
@@ -254,38 +256,60 @@ int main(int, char**) {
 
         renderer.clear();
 
-        mainMat.updateColor(glm::vec4(0.8, 0.6, 0.3, 1.0));
-        glCullFace(GL_FRONT);
-        if (state & 0b0001)
+        // draw scene to depth
+        {
+            glDrawBuffer(GL_NONE); // dont draw in the framebuffer
+            mainMat.updateColor(glm::vec4(0.9, 0.2, 0.5, 1.0));
+            //renderer.drawRenderable(&coord);
             renderer.drawRenderable(&triangle);
-        if (state & 0b0010)
-            renderer.drawRenderable(&triangle, shadowFrontCapIndices.size(), shadowFrontCapIndices.data());
-        if (state & 0b0100)
-            renderer.drawRenderable(&triangle, shadowEdgeIndices.size(), shadowEdgeIndices.data());
-        if (state & 0b1000) {
-            glDisable(GL_DEPTH_TEST);
-            glEnable(GL_DEPTH_CLAMP);
+            glDrawBuffer(GL_BACK);
+        }
+
+        mainMat.updateColor(glm::vec4(0.8, 0.6, 0.3, 1.0));
+
+        // render shadow volume
+        glCullFace(GL_FRONT); // TODO: this should be tmp
+        {
+            glDepthMask(GL_FALSE); // dont write to depth
+            glDepthFunc(GL_ALWAYS); // always pass depth
+            //glEnable(GL_DEPTH_CLAMP); // clamp infinity to max depth
             renderer.drawRenderable(&triangle, shadowBackCapIndices.size(), shadowBackCapIndices.data());
-            glEnable(GL_DEPTH_TEST);
-            glDisable(GL_DEPTH_CLAMP);
+            renderer.drawRenderable(&triangle, shadowFrontCapIndices.size(), shadowFrontCapIndices.data());
+            renderer.drawRenderable(&triangle, shadowEdgeIndices.size(), shadowEdgeIndices.data());
+            //glDisable(GL_DEPTH_CLAMP);
+            glDepthFunc(GL_LESS);
+            glDepthMask(GL_TRUE);
         }
             
         mainMat.updateColor(glm::vec4(0.3, 0.3, 0.7, 1.0));
 
-        glCullFace(GL_BACK);
-        if (state & 0b0001)
-            renderer.drawRenderable(&triangle);
-        if (state & 0b0010)
-            renderer.drawRenderable(&triangle, shadowFrontCapIndices.size(), shadowFrontCapIndices.data());
-        if (state & 0b0100)
-            renderer.drawRenderable(&triangle, shadowEdgeIndices.size(), shadowEdgeIndices.data());
-        if (state & 0b1000) {
-            glDisable(GL_DEPTH_TEST);
-            glEnable(GL_DEPTH_CLAMP);
+        // render shadow volume (again but backface TODO: this is tmp)
+        glCullFace(GL_BACK); // TODO: this should be tmp
+        {
+            glDepthMask(GL_FALSE); // dont write to depth
+            glDepthFunc(GL_ALWAYS); // always pass depth
+            //glEnable(GL_DEPTH_CLAMP); // clamp infinity to max depth
             renderer.drawRenderable(&triangle, shadowBackCapIndices.size(), shadowBackCapIndices.data());
-            glEnable(GL_DEPTH_TEST);
-            glDisable(GL_DEPTH_CLAMP);
+            renderer.drawRenderable(&triangle, shadowFrontCapIndices.size(), shadowFrontCapIndices.data());
+            renderer.drawRenderable(&triangle, shadowEdgeIndices.size(), shadowEdgeIndices.data());
+            //glDisable(GL_DEPTH_CLAMP);
+            glDepthFunc(GL_LESS);
+            glDepthMask(GL_TRUE);
         }
+
+#if 0
+        glCullFace(GL_BACK);
+        //glDisable(GL_DEPTH_TEST);
+        glDepthFunc(GL_ALWAYS);
+        //glEnable(GL_DEPTH_CLAMP);
+        renderer.drawRenderable(&triangle, shadowBackCapIndices.size(), shadowBackCapIndices.data());
+        //glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_LESS);
+        //glDisable(GL_DEPTH_CLAMP);
+        renderer.drawRenderable(&triangle);
+        renderer.drawRenderable(&triangle, shadowFrontCapIndices.size(), shadowFrontCapIndices.data());
+        renderer.drawRenderable(&triangle, shadowEdgeIndices.size(), shadowEdgeIndices.data());
+#endif
 
         app.swapWindow();
 
