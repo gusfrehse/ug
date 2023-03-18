@@ -35,11 +35,12 @@ Renderer::Renderer(Camera *camera) : mCamera(camera) {
     glDebugMessageCallback(debugCallback, 0);
 
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_STENCIL_TEST);
     //glEnable(GL_STENCIL_TEST);
     glEnable(GL_DEPTH_CLAMP);
 
     glEnable(GL_CULL_FACE);
-    //glCullFace(GL_BACK);
+    glCullFace(GL_BACK);
 
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glLineWidth(1);
@@ -79,5 +80,5 @@ void Renderer::clearColor(glm::vec4 color) {
 }
 
 void Renderer::clear() {
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 }

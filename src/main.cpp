@@ -97,14 +97,12 @@ calculateShadowVolume(glm::vec4 lightPos, const Mesh& input) {
         printf("[-] ERROR: Volumes for non indexed meshes is not yet implemented\n");
         exit(1);
     }
-   auto indices = input.getIndices();
-   auto normals = input.getNormals();
-   auto vertices = input.getVertices();
+
+    auto indices = input.getIndices();
+    auto normals = input.getNormals();
+    auto vertices = input.getVertices();
 
     std::unordered_set<std::pair<int, int>, DumbPairHash> contourEdges;
-
-    std::printf("size of original indices %zu\n", indices.size());
-    std::printf("light pos: %g %g %g %g\n", lightPos.x, lightPos.y, lightPos.z, lightPos.w);
 
     auto updateContourEdge = [&contourEdges](std::pair<unsigned int, unsigned int> edge) {
         auto opEdge = std::make_pair(edge.second, edge.first);
@@ -135,20 +133,13 @@ calculateShadowVolume(glm::vec4 lightPos, const Mesh& input) {
 
         glm::vec3 lightDir = glm::normalize(glm::vec3(averagePos - lightPos));
         
-        std::printf("light dir : %2.2f %2.2f %2.2f \n average normal: %2.2f %2.2f %2.2f\n", lightDir.x, lightDir.y, lightDir.z, averageNormal.x, averageNormal.y, averageNormal.z);
-        std::printf("dot: %2.2f\n", glm::dot(lightDir, averageNormal));
-
-        if (glm::dot(lightDir, averageNormal) <= 0) {
+        if (glm::dot(lightDir, averageNormal) >= 0) {
             // front cap
-            std::printf("adding edges to front cap: \n");
-            std::printf("\t %d %d %d\n", indices[3 * i + 0], indices[3 * i + 1], indices[3 * i + 2]);
             frontCap.push_back(indices[3 * i + 0]);
             frontCap.push_back(indices[3 * i + 1]);
             frontCap.push_back(indices[3 * i + 2]);
 
             // back cap
-            std::printf("adding edges to back cap: \n");
-            std::printf("\t %d_inf %d_inf %d_inf\n", indices[3 * i + 0], indices[3 * i + 1], indices[3 * i + 2]);
             backCap.push_back(indices[3 * i + 0] + input.numVertices);
             backCap.push_back(indices[3 * i + 1] + input.numVertices);
             backCap.push_back(indices[3 * i + 2] + input.numVertices);
@@ -161,13 +152,10 @@ calculateShadowVolume(glm::vec4 lightPos, const Mesh& input) {
     }
 
     for (const auto& [a, b] : contourEdges) {
-        std::printf("adding edges to contour: \n");
-        std::printf("\t %d %d %d_inf\n", b, a, a);
         silhouette.push_back(b);
         silhouette.push_back(a);
         silhouette.push_back(a + input.numVertices);
 
-        std::printf("\t %d %d_inf %d_inf\n", b, a, b);
         silhouette.push_back(b);
         silhouette.push_back(a + input.numVertices);
         silhouette.push_back(b + input.numVertices);
@@ -184,9 +172,9 @@ int main(int, char**) {
     Renderer renderer(&camera);
     InputController input{};
 
-    glm::vec4 lightPos = glm::vec4(10.0f, 0.0f, 0.0f, 1.0f);
+    glm::vec4 lightPos = glm::vec4(10.0f, 30.0f, 0.0f, 1.0f);
 
-    auto mainMesh = Mesh::fromObjFile("assets/models/torus.obj");
+    auto mainMesh = Mesh::fromObjFile("assets/models/teste.obj");
     auto otherMesh = Mesh::fromObjFile("assets/models/coordinate_system.obj");
     //auto mainMesh = createTriangleMesh();
     //auto coordinateSystemMesh = Mesh::fromObjFile("assets/models/coordinate_system.obj");
@@ -215,11 +203,19 @@ int main(int, char**) {
     //}
     //std::printf("\n");
 
-    renderer.clearColor(glm::vec4(0.03, 0.04f, 0.03f, 1.0f));
+    renderer.clearColor(glm::vec4(0.1, 0.1f, 0.1f, 1.0f));
 
     mainMat.updateColor(glm::vec4(0.1f, 0.2f, 0.6f, 1.0f));
 
     camera.setPosition(glm::vec3(0.0f, 0.0f, 2.0f));
+
+    {
+        // TODO: rm this
+        int stencilBits;
+        glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_STENCIL, GL_FRAMEBUFFER_ATTACHMENT_STENCIL_SIZE, &stencilBits);
+        std::printf("stencil bits = %d\n", stencilBits);
+
+    }
 
     uint8_t state = 1;
 
@@ -256,60 +252,60 @@ int main(int, char**) {
 
         renderer.clear();
 
+        glDrawBuffer(GL_NONE); // dont draw in the framebuffer
+                               //
         // draw scene to depth
         {
-            glDrawBuffer(GL_NONE); // dont draw in the framebuffer
-            mainMat.updateColor(glm::vec4(0.9, 0.2, 0.5, 1.0));
+            glStencilFunc(GL_ALWAYS, 0x00, 0xFF);
+            glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_KEEP);
+            glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_KEEP, GL_KEEP);
+            //glDrawBuffer(GL_BACK); // TODO: rm
             //renderer.drawRenderable(&coord);
+            mainMat.updateColor(glm::vec4(0.9, 0.2, 0.5, 1.0));
             renderer.drawRenderable(&triangle);
-            glDrawBuffer(GL_BACK);
         }
 
         mainMat.updateColor(glm::vec4(0.8, 0.6, 0.3, 1.0));
 
         // render shadow volume
-        glCullFace(GL_FRONT); // TODO: this should be tmp
+        //glCullFace(GL_FRONT); // TODO: this should be tmp
+        //
+        // Here we should have already drawed the scene in the depthbuffer.
+        // If a fragment fails on stencil test we don't do anything.
+        // If a fragment fails on depth test we increment/decrement if
+        // front/back face.
+        // If a fragment pass, we don't do anything.
         {
+            glDisable(GL_CULL_FACE);
+            glStencilFunc(GL_ALWAYS, 0x00, 0xFF);
+            glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_INCR_WRAP, GL_KEEP);
+            glStencilOpSeparate(GL_BACK, GL_KEEP, GL_DECR_WRAP, GL_KEEP);
+
             glDepthMask(GL_FALSE); // dont write to depth
-            glDepthFunc(GL_ALWAYS); // always pass depth
+            glDepthFunc(GL_LEQUAL); // always pass depth
             //glEnable(GL_DEPTH_CLAMP); // clamp infinity to max depth
+            mainMat.updateColor(glm::vec4(0.8, 0.6, 0.3, 1.0));
             renderer.drawRenderable(&triangle, shadowBackCapIndices.size(), shadowBackCapIndices.data());
+            mainMat.updateColor(glm::vec4(0.6, 0.8, 0.3, 1.0));
             renderer.drawRenderable(&triangle, shadowFrontCapIndices.size(), shadowFrontCapIndices.data());
             renderer.drawRenderable(&triangle, shadowEdgeIndices.size(), shadowEdgeIndices.data());
             //glDisable(GL_DEPTH_CLAMP);
-            glDepthFunc(GL_LESS);
+            glDepthFunc(GL_LEQUAL);
             glDepthMask(GL_TRUE);
+            glEnable(GL_CULL_FACE);
         }
-            
-        mainMat.updateColor(glm::vec4(0.3, 0.3, 0.7, 1.0));
 
-        // render shadow volume (again but backface TODO: this is tmp)
-        glCullFace(GL_BACK); // TODO: this should be tmp
+
+        glDrawBuffer(GL_BACK);
+        // draw non shadowed scene
         {
-            glDepthMask(GL_FALSE); // dont write to depth
-            glDepthFunc(GL_ALWAYS); // always pass depth
-            //glEnable(GL_DEPTH_CLAMP); // clamp infinity to max depth
-            renderer.drawRenderable(&triangle, shadowBackCapIndices.size(), shadowBackCapIndices.data());
-            renderer.drawRenderable(&triangle, shadowFrontCapIndices.size(), shadowFrontCapIndices.data());
-            renderer.drawRenderable(&triangle, shadowEdgeIndices.size(), shadowEdgeIndices.data());
-            //glDisable(GL_DEPTH_CLAMP);
-            glDepthFunc(GL_LESS);
-            glDepthMask(GL_TRUE);
-        }
+            glStencilFunc(GL_EQUAL, 0x00, 0xFF);
+            glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_KEEP);
+            glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_KEEP, GL_KEEP);
 
-#if 0
-        glCullFace(GL_BACK);
-        //glDisable(GL_DEPTH_TEST);
-        glDepthFunc(GL_ALWAYS);
-        //glEnable(GL_DEPTH_CLAMP);
-        renderer.drawRenderable(&triangle, shadowBackCapIndices.size(), shadowBackCapIndices.data());
-        //glEnable(GL_DEPTH_TEST);
-        glDepthFunc(GL_LESS);
-        //glDisable(GL_DEPTH_CLAMP);
-        renderer.drawRenderable(&triangle);
-        renderer.drawRenderable(&triangle, shadowFrontCapIndices.size(), shadowFrontCapIndices.data());
-        renderer.drawRenderable(&triangle, shadowEdgeIndices.size(), shadowEdgeIndices.data());
-#endif
+            mainMat.updateColor(glm::vec4(0.9, 0.2, 0.5, 1.0));
+            renderer.drawRenderable(&triangle);
+        }
 
         app.swapWindow();
 
