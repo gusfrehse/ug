@@ -35,15 +35,19 @@ Renderer::Renderer(Camera *camera) : mCamera(camera) {
     glDebugMessageCallback(debugCallback, 0);
 
     glEnable(GL_DEPTH_TEST);
+    //glDepthFunc(GL_LEQUAL);
     glEnable(GL_STENCIL_TEST);
     //glEnable(GL_STENCIL_TEST);
     glEnable(GL_DEPTH_CLAMP);
 
     glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
+    //glCullFace(GL_BACK);
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    glLineWidth(1);
+    glLineWidth(3);
 }
 
 Renderer::~Renderer() = default;

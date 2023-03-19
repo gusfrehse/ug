@@ -20,6 +20,8 @@
 #include <glm/gtx/hash.hpp>
 
 
+std::vector<Renderable> scene{};
+
 Mesh createTriangleMesh() {
     return Mesh({
                         glm::vec4( 0.0f,  5.0f, 0.0f, 1.0f),
@@ -141,8 +143,8 @@ calculateShadowVolume(glm::vec4 lightPos, const Mesh& input) {
 
             // back cap
             backCap.push_back(indices[3 * i + 0] + input.numVertices);
-            backCap.push_back(indices[3 * i + 1] + input.numVertices);
             backCap.push_back(indices[3 * i + 2] + input.numVertices);
+            backCap.push_back(indices[3 * i + 1] + input.numVertices);
 
             // silhouette detection
             updateContourEdge(std::make_pair(indices[3 * i + 0], indices[3 * i + 1]));
@@ -164,6 +166,78 @@ calculateShadowVolume(glm::vec4 lightPos, const Mesh& input) {
     return { frontCap, backCap, silhouette };
 }
 
+void drawScene(auto& renderer) {
+    for (auto& rend : scene) {
+        renderer.drawRenderable(&rend);
+    }
+}
+
+void renderShadowed(auto& renderer, auto& mainMat, auto& triangle, auto& shadowFrontCapIndices, auto& shadowEdgeIndices, auto& shadowBackCapIndices) {
+    glDrawBuffer(GL_NONE); // dont draw in the framebuffer
+ 
+    // draw scene to depth
+    {
+        glStencilFunc(GL_ALWAYS, 0x00, 0xFF);
+        glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_KEEP);
+        glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_KEEP, GL_KEEP);
+        //glDrawBuffer(GL_BACK); // TODO: rm
+        //renderer.drawRenderable(&coord);
+        mainMat.updateColor(glm::vec4(0.9, 0.2, 0.5, 1.0));
+        drawScene(renderer);
+    }
+
+    mainMat.updateColor(glm::vec4(0.8, 0.6, 0.3, 1.0));
+
+    // render shadow volume
+    //glCullFace(GL_FRONT); // TODO: this should be tmp
+    //glDrawBuffer(GL_BACK); // TODO: tmp
+    //
+    // Here we should have already drawed the scene in the depthbuffer.
+    // If a fragment fails on stencil test we don't do anything.
+    // If a fragment fails on depth test we increment/decrement if
+    // front/back face.
+    // If a fragment pass, we don't do anything.
+    {
+        glDisable(GL_CULL_FACE);
+        glStencilFunc(GL_ALWAYS, 0x00, 0xFF);
+        glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_INCR_WRAP, GL_KEEP);
+        glStencilOpSeparate(GL_BACK, GL_KEEP, GL_DECR_WRAP, GL_KEEP);
+
+        glDepthMask(GL_FALSE); // dont write to depth
+        //glDepthFunc(GL_LESS); // always pass depth
+
+        glEnable(GL_DEPTH_CLAMP); // clamp infinity to max depth
+
+        mainMat.updateColor(glm::vec4(0.8, 0.2, 0.2, 1.0));
+        renderer.drawRenderable(&triangle, shadowFrontCapIndices.size(), shadowFrontCapIndices.data());
+        mainMat.updateColor(glm::vec4(0.2, 0.8, 0.2, 1.0));
+        renderer.drawRenderable(&triangle, shadowEdgeIndices.size(), shadowEdgeIndices.data());
+        mainMat.updateColor(glm::vec4(0.2, 0.2, 0.8, 1.0));
+        renderer.drawRenderable(&triangle, shadowBackCapIndices.size(), shadowBackCapIndices.data());
+
+        glDisable(GL_DEPTH_CLAMP);
+
+        //glDepthFunc(GL_LESS);
+        glDepthMask(GL_TRUE);
+        glEnable(GL_CULL_FACE);
+    }
+
+
+    glDrawBuffer(GL_BACK);
+    glClear(GL_DEPTH_BUFFER_BIT);
+    //glDepthFunc(GL_LE);
+    // draw non shadowed scene
+    {
+        glStencilFunc(GL_EQUAL, 0x00, 0xFF);
+        glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_KEEP);
+        glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_KEEP, GL_KEEP);
+
+        mainMat.updateColor(glm::vec4(0.9, 0.2, 0.5, 1.0));
+        drawScene(renderer);
+    }
+
+}
+
 int main(int, char**) {
     std::printf("Hello world! Current directory: '%s'\n", std::filesystem::current_path().string().c_str());
 
@@ -172,16 +246,18 @@ int main(int, char**) {
     Renderer renderer(&camera);
     InputController input{};
 
-    glm::vec4 lightPos = glm::vec4(10.0f, 30.0f, 0.0f, 1.0f);
+    glm::vec4 lightPos = glm::vec4(-30.0f, 130.0f, 40.0f, 1.0f);
 
     auto mainMesh = Mesh::fromObjFile("assets/models/teste.obj");
-    auto otherMesh = Mesh::fromObjFile("assets/models/coordinate_system.obj");
     //auto mainMesh = createTriangleMesh();
-    //auto coordinateSystemMesh = Mesh::fromObjFile("assets/models/coordinate_system.obj");
+    auto planeMesh = Mesh::fromObjFile("assets/models/plane.obj");
     auto mainMat = ShadedColorMaterial(glm::vec4(0.3, 0.4, 0.5, 1.0), lightPos);
 
     auto triangle = Renderable(&mainMesh, &mainMat);
-    auto coord = Renderable(&otherMesh, &mainMat);
+    auto plane = Renderable(&planeMesh, &mainMat);
+    
+    scene.push_back(triangle);
+    scene.push_back(plane);
 
     auto [shadowFrontCapIndices, shadowBackCapIndices, shadowEdgeIndices] = calculateShadowVolume(lightPos, mainMesh); 
 
@@ -238,73 +314,31 @@ int main(int, char**) {
 
         if (input.isPressed(Action::INTERACT)) {
             state <<= 1;
-            if (state & 0b10000) state = 1;
+            if (state & 0b100) state = 1;
             std::printf("\ninteracted %x\n", state);
-            if (state & 0b00001)
-                std::printf("original\n");
-            if (state & 0b00010)
-                std::printf("shadow front cap\n");
-            if (state & 0b00100)
-                std::printf("shadow edge\n");
-            if (state & 0b01000)
-                std::printf("shadow back cap\n");
+            if (state & 0b001)
+                glEnable(GL_STENCIL_TEST);
+                std::printf("final scene\n");
+            if (state & 0b010)
+                glDisable(GL_STENCIL_TEST);
+                std::printf("shadow volume\n");
         }
 
         renderer.clear();
 
-        glDrawBuffer(GL_NONE); // dont draw in the framebuffer
-                               //
-        // draw scene to depth
-        {
+        //if (state == 0b01)
+            renderShadowed(renderer, mainMat, triangle, shadowFrontCapIndices, shadowEdgeIndices, shadowBackCapIndices);
+        /*else*/ if (state == 0b10) {
             glStencilFunc(GL_ALWAYS, 0x00, 0xFF);
             glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_KEEP);
             glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_KEEP, GL_KEEP);
-            //glDrawBuffer(GL_BACK); // TODO: rm
-            //renderer.drawRenderable(&coord);
-            mainMat.updateColor(glm::vec4(0.9, 0.2, 0.5, 1.0));
-            renderer.drawRenderable(&triangle);
-        }
 
-        mainMat.updateColor(glm::vec4(0.8, 0.6, 0.3, 1.0));
-
-        // render shadow volume
-        //glCullFace(GL_FRONT); // TODO: this should be tmp
-        //
-        // Here we should have already drawed the scene in the depthbuffer.
-        // If a fragment fails on stencil test we don't do anything.
-        // If a fragment fails on depth test we increment/decrement if
-        // front/back face.
-        // If a fragment pass, we don't do anything.
-        {
-            glDisable(GL_CULL_FACE);
-            glStencilFunc(GL_ALWAYS, 0x00, 0xFF);
-            glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_INCR_WRAP, GL_KEEP);
-            glStencilOpSeparate(GL_BACK, GL_KEEP, GL_DECR_WRAP, GL_KEEP);
-
-            glDepthMask(GL_FALSE); // dont write to depth
-            glDepthFunc(GL_LEQUAL); // always pass depth
-            //glEnable(GL_DEPTH_CLAMP); // clamp infinity to max depth
-            mainMat.updateColor(glm::vec4(0.8, 0.6, 0.3, 1.0));
-            renderer.drawRenderable(&triangle, shadowBackCapIndices.size(), shadowBackCapIndices.data());
-            mainMat.updateColor(glm::vec4(0.6, 0.8, 0.3, 1.0));
-            renderer.drawRenderable(&triangle, shadowFrontCapIndices.size(), shadowFrontCapIndices.data());
+            mainMat.updateColor(glm::vec4(0.8, 0.2, 0.2, 1.0));
+            //renderer.drawRenderable(&triangle, shadowFrontCapIndices.size(), shadowFrontCapIndices.data());
+            mainMat.updateColor(glm::vec4(0.2, 0.8, 0.2, 1.0));
             renderer.drawRenderable(&triangle, shadowEdgeIndices.size(), shadowEdgeIndices.data());
-            //glDisable(GL_DEPTH_CLAMP);
-            glDepthFunc(GL_LEQUAL);
-            glDepthMask(GL_TRUE);
-            glEnable(GL_CULL_FACE);
-        }
-
-
-        glDrawBuffer(GL_BACK);
-        // draw non shadowed scene
-        {
-            glStencilFunc(GL_EQUAL, 0x00, 0xFF);
-            glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_KEEP);
-            glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_KEEP, GL_KEEP);
-
-            mainMat.updateColor(glm::vec4(0.9, 0.2, 0.5, 1.0));
-            renderer.drawRenderable(&triangle);
+            mainMat.updateColor(glm::vec4(0.2, 0.2, 0.8, 1.0));
+            //renderer.drawRenderable(&triangle, shadowBackCapIndices.size(), shadowBackCapIndices.data());
         }
 
         app.swapWindow();

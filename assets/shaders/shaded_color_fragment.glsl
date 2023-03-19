@@ -10,5 +10,5 @@ in vec4 vLightPos;
 
 void main() {
    float coef = 0.5; // / (vDepth * vDepth * 0.01 + 1.0);
-   fragColor = uColor * 1.0; //max(0.0, dot(vNormal, normalize(vLightPos.xyz)));
+   fragColor = uColor * (1 - vDepth * 0.01); //max(0.0, dot(vNormal, normalize(vLightPos.xyz)));
 }
