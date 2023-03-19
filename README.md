@@ -3,6 +3,8 @@
 
 ### TODO
  - [x] Works?
+ - [ ] Regenerate Shadow Volumes to enable dynamic scenes
+ - [ ] More objects
  - [ ] Code cleanup
    - [ ] Abstract Shadow Volume creation
    - [ ] Remove abuse of std::vector::push_back's
