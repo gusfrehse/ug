@@ -12,17 +12,17 @@ Install `Cmake`, `SDL2`, `glm` and `glew` with your package manager.
 
 Then create a directory for the build files.
 
-  $ mkdir build
+    $ mkdir build
 
 Then generate the build:
 
-  $ cmake -S . -B ./build -DCMAKE_BUILD_TYPE=Release
+    $ cmake -S . -B ./build -DCMAKE_BUILD_TYPE=Release
 
 and build:
 
-  $ cmake --build ./build
+    $ cmake --build ./build
 
 To run:
 
-  $ ./build/src/game
+    $ ./build/src/game
 
