@@ -23,6 +23,7 @@ public:
     void setFov(float fov);
     void setYaw(float yaw);
     void setPitch(float pitch);
+    void setNearPlane(float nearPlane);
     void moveRight(float amount);
     void moveUp(float amount);
     void moveFoward(float amount);

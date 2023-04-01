@@ -25,6 +25,7 @@ public:
     void drawRenderable(Renderable *renderable);
     void clear();
     void clearColor(glm::vec4 color);
+    Camera* getCamera() { return mCamera; }
 };
 
 #endif //UG_RENDERER_H

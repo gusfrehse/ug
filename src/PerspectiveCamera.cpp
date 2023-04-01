@@ -36,6 +36,11 @@ void PerspectiveCamera::setPitch(float pitch) {
     recalculateViewMatrix();
 }
 
+void PerspectiveCamera::setNearPlane(float nearPlane) {
+    mNearPlane = nearPlane;
+    recalculateProjectionMatrix();
+}
+
 void PerspectiveCamera::moveRight(float amount) {
     glm::vec4 cameraRight = mInverseViewMatrix[0];
     glm::vec3 right = glm::normalize(glm::vec3(cameraRight.x, 0.0f, cameraRight.z));

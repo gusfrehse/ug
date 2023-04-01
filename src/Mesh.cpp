@@ -87,6 +87,9 @@ Mesh Mesh::fromObjFile(const std::string& path) {
 
     if (result.error) {
         std::printf("[-] ERROR: loading obj \"%s\".", path.c_str());
+        std::printf("\tError Message: '%s'\n", result.error.code.message().c_str());
+        std::printf("\tError Line: '%s'\n", result.error.line);
+        std::printf("\tError Line Num: '%d'\n", result.error.line_num);
         exit(1);
     }
 

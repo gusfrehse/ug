@@ -173,6 +173,8 @@ void drawScene(auto& renderer) {
 }
 
 void renderShadowed(auto& renderer, auto& mainMat, auto& triangle, auto& shadowFrontCapIndices, auto& shadowEdgeIndices, auto& shadowBackCapIndices) {
+    auto camera = (PerspectiveCamera*) renderer.getCamera();
+
     glDrawBuffer(GL_NONE); // dont draw in the framebuffer
  
     // draw scene to depth
@@ -198,6 +200,7 @@ void renderShadowed(auto& renderer, auto& mainMat, auto& triangle, auto& shadowF
     // front/back face.
     // If a fragment pass, we don't do anything.
     {
+        camera->setNearPlane(0.001);
         glDisable(GL_CULL_FACE);
         glStencilFunc(GL_ALWAYS, 0x00, 0xFF);
         glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_INCR_WRAP, GL_KEEP);
@@ -222,12 +225,12 @@ void renderShadowed(auto& renderer, auto& mainMat, auto& triangle, auto& shadowF
         glEnable(GL_CULL_FACE);
     }
 
-
     glDrawBuffer(GL_BACK);
     glClear(GL_DEPTH_BUFFER_BIT);
     //glDepthFunc(GL_LE);
     // draw non shadowed scene
     {
+        camera->setNearPlane(0.001001);
         glStencilFunc(GL_EQUAL, 0x00, 0xFF);
         glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_KEEP);
         glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_KEEP, GL_KEEP);
@@ -257,7 +260,7 @@ int main(int, char**) {
     auto plane = Renderable(&planeMesh, &mainMat);
     
     scene.push_back(triangle);
-    scene.push_back(plane);
+    //scene.push_back(plane);
 
     auto [shadowFrontCapIndices, shadowBackCapIndices, shadowEdgeIndices] = calculateShadowVolume(lightPos, mainMesh); 
 
@@ -326,19 +329,23 @@ int main(int, char**) {
 
         renderer.clear();
 
-        //if (state == 0b01)
+        if (state == 0b01)
             renderShadowed(renderer, mainMat, triangle, shadowFrontCapIndices, shadowEdgeIndices, shadowBackCapIndices);
-        /*else*/ if (state == 0b10) {
+        else if (state == 0b10) {
+            glDisable(GL_CULL_FACE);
+            glDisable(GL_DEPTH_TEST);
             glStencilFunc(GL_ALWAYS, 0x00, 0xFF);
             glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_KEEP);
             glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_KEEP, GL_KEEP);
 
-            mainMat.updateColor(glm::vec4(0.8, 0.2, 0.2, 1.0));
+            mainMat.updateColor(glm::vec4(0.8, 0.2, 0.2, 0.2));
             //renderer.drawRenderable(&triangle, shadowFrontCapIndices.size(), shadowFrontCapIndices.data());
-            mainMat.updateColor(glm::vec4(0.2, 0.8, 0.2, 1.0));
+            mainMat.updateColor(glm::vec4(0.2, 0.8, 0.2, 0.2));
             renderer.drawRenderable(&triangle, shadowEdgeIndices.size(), shadowEdgeIndices.data());
-            mainMat.updateColor(glm::vec4(0.2, 0.2, 0.8, 1.0));
+            mainMat.updateColor(glm::vec4(0.2, 0.2, 0.8, 0.2));
             //renderer.drawRenderable(&triangle, shadowBackCapIndices.size(), shadowBackCapIndices.data());
+            glEnable(GL_CULL_FACE);
+            glEnable(GL_DEPTH_TEST);
         }
 
         app.swapWindow();
