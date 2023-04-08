@@ -11,6 +11,8 @@
 
 #include <GL/glew.h>
 
+#include "Camera.h"
+
 const std::string shaderDirectoryPrefix("assets/shaders/");
 
 static GLint defaultProgram = 0;
@@ -158,11 +160,11 @@ FlatColorMaterial::FlatColorMaterial(glm::vec4 col)
 
 void FlatColorMaterial::updateColor(glm::vec4 color) {
     mColor = color;
-    glUseProgram(getShaderProgram());
     updateUniforms();
 }
 
 void FlatColorMaterial::updateUniforms() {
+    glUseProgram(getShaderProgram());
     glUniform4f(mUniformLocation, mColor.x, mColor.y, mColor.z, mColor.w);
 }
 
@@ -183,7 +185,6 @@ ShadedColorMaterial::ShadedColorMaterial(glm::vec4 color, glm::vec4 lightPos)
     mColor = color;
     mLightPos = lightPos;
 
-    glUseProgram(getShaderProgram());
     updateUniforms();
 }
 
@@ -194,12 +195,62 @@ void ShadedColorMaterial::updateColor(glm::vec4 color) {
 
 void ShadedColorMaterial::updateLightPos(glm::vec4 lightPos) {
     mLightPos = lightPos;
-    glUseProgram(getShaderProgram());
     updateUniforms();
 }
 
 void ShadedColorMaterial::updateUniforms() {
+    glUseProgram(getShaderProgram());
     glUniform4f(mColorUniformLocation, mColor.x, mColor.y, mColor.z, mColor.w);
     glUniform4f(mLightPosUniformLocation, mLightPos.x, mLightPos.y, mLightPos.z, mLightPos.w);
+}
+
+ColorPhongMaterial::ColorPhongMaterial(glm::vec4 color, glm::vec4 lightPos, Camera *cam)
+    : Material("color_phong_vertex.glsl", "color_phong_fragment.glsl") {
+
+    mColorUniformLocation = glGetUniformLocation(this->getShaderProgram(), "uColor");
+    mLightPosUniformLocation = glGetUniformLocation(this->getShaderProgram(), "uLightPos");
+    mCamPosUniformLocation = glGetUniformLocation(this->getShaderProgram(), "uCamPos");
+
+    if (mColorUniformLocation == -1) {
+        std::fprintf(stderr, "[-] ERROR: Couldn't get color uniform location in ColorPhongMaterial!\n");
+    }
+
+    if (mLightPosUniformLocation == -1) {
+        std::fprintf(stderr, "[-] ERROR: Couldn't get light pos uniform location in ColorPhongMaterial!\n");
+    }
+
+    if (mCamPosUniformLocation == -1) {
+        std::fprintf(stderr, "[-] ERROR: Couldn't get camera pos uniform location in ColorPhongMaterial!\n");
+    }
+
+    mColor = color;
+    mLightPos = lightPos;
+    mCamera = cam;
+
+    updateUniforms();
+}
+
+void ColorPhongMaterial::updateCamera(Camera *cam) {
+    mCamera = cam;
+    updateUniforms();
+}
+
+void ColorPhongMaterial::updateColor(glm::vec4 color) {
+    mColor = color;
+    updateUniforms();
+}
+
+void ColorPhongMaterial::updateLightPos(glm::vec4 lightPos) {
+    mLightPos = lightPos;
+    updateUniforms();
+}
+
+void ColorPhongMaterial::updateUniforms() {
+    glUseProgram(getShaderProgram());
+    glUniform4f(mColorUniformLocation, mColor.x, mColor.y, mColor.z, mColor.w);
+    glUniform4f(mLightPosUniformLocation, mLightPos.x, mLightPos.y, mLightPos.z, mLightPos.w);
+
+    glm::vec3 camPos = mCamera->getPosition();
+    glUniform3f(mCamPosUniformLocation, camPos.x, camPos.y, camPos.z);
 }
 

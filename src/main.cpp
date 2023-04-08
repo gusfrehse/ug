@@ -20,8 +20,6 @@
 #include <glm/gtx/hash.hpp>
 
 
-std::vector<Renderable> scene{};
-
 Mesh createTriangleMesh() {
     return Mesh({
                         glm::vec4( 0.0f,  5.0f, 0.0f, 1.0f),
@@ -43,7 +41,9 @@ Mesh createTriangleMesh() {
 }
 
 void updateCamera(PerspectiveCamera& camera, InputController& input, float dt) {
-    float speed = 0.01f * dt;
+    static float coef = 0.1f;
+    float speed = coef * dt;
+
     if (input.isHolded(Action::FORWARD)) {
         camera.moveFoward(speed);
     } 
@@ -68,7 +68,15 @@ void updateCamera(PerspectiveCamera& camera, InputController& input, float dt) {
         camera.moveUp(-speed);
     }
 
-    float sensitivity = 1.0f * dt;
+    if (input.isPressed(Action::SPEED_UP)) {
+        coef *= 1.3f;
+    }
+
+    if (input.isPressed(Action::SPEED_DOWN)) {
+        coef *= 0.7f;
+    }
+
+    float sensitivity = 0.1f;
 
     if (input.isHolded(Action::LOOK_UP)) {
         camera.lookUp(sensitivity);
@@ -137,13 +145,13 @@ calculateShadowVolume(glm::vec4 lightPos, const Mesh& input) {
         
         if (glm::dot(lightDir, averageNormal) >= 0) {
             // front cap
-            frontCap.push_back(indices[3 * i + 0]);
             frontCap.push_back(indices[3 * i + 1]);
+            frontCap.push_back(indices[3 * i + 0]);
             frontCap.push_back(indices[3 * i + 2]);
 
             // back cap
-            backCap.push_back(indices[3 * i + 0] + input.numVertices);
             backCap.push_back(indices[3 * i + 2] + input.numVertices);
+            backCap.push_back(indices[3 * i + 0] + input.numVertices);
             backCap.push_back(indices[3 * i + 1] + input.numVertices);
 
             // silhouette detection
@@ -154,25 +162,25 @@ calculateShadowVolume(glm::vec4 lightPos, const Mesh& input) {
     }
 
     for (const auto& [a, b] : contourEdges) {
-        silhouette.push_back(b);
         silhouette.push_back(a);
+        silhouette.push_back(b);
         silhouette.push_back(a + input.numVertices);
 
-        silhouette.push_back(b);
         silhouette.push_back(a + input.numVertices);
+        silhouette.push_back(b);
         silhouette.push_back(b + input.numVertices);
     }
 
     return { frontCap, backCap, silhouette };
 }
 
-void drawScene(auto& renderer) {
+void drawScene(auto& renderer, auto& scene) {
     for (auto& rend : scene) {
         renderer.drawRenderable(&rend);
     }
 }
 
-void renderShadowed(auto& renderer, auto& mainMat, auto& triangle, auto& shadowFrontCapIndices, auto& shadowEdgeIndices, auto& shadowBackCapIndices) {
+void renderShadowed(auto& renderer, auto& scene, auto& shadowMat, auto& triangle, auto& shadowFrontCapIndices, auto& shadowEdgeIndices, auto& shadowBackCapIndices) {
     auto camera = (PerspectiveCamera*) renderer.getCamera();
 
     glDrawBuffer(GL_NONE); // dont draw in the framebuffer
@@ -182,26 +190,16 @@ void renderShadowed(auto& renderer, auto& mainMat, auto& triangle, auto& shadowF
         glStencilFunc(GL_ALWAYS, 0x00, 0xFF);
         glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_KEEP);
         glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_KEEP, GL_KEEP);
-        //glDrawBuffer(GL_BACK); // TODO: rm
-        //renderer.drawRenderable(&coord);
-        mainMat.updateColor(glm::vec4(0.9, 0.2, 0.5, 1.0));
-        drawScene(renderer);
+        shadowMat.updateColor(glm::vec4(0.9, 0.2, 0.5, 1.0));
+        drawScene(renderer, scene);
     }
 
-    mainMat.updateColor(glm::vec4(0.8, 0.6, 0.3, 1.0));
+    shadowMat.updateColor(glm::vec4(0.8, 0.6, 0.3, 1.0));
 
     // render shadow volume
-    //glCullFace(GL_FRONT); // TODO: this should be tmp
-    //glDrawBuffer(GL_BACK); // TODO: tmp
-    //
-    // Here we should have already drawed the scene in the depthbuffer.
-    // If a fragment fails on stencil test we don't do anything.
-    // If a fragment fails on depth test we increment/decrement if
-    // front/back face.
-    // If a fragment pass, we don't do anything.
     {
-        camera->setNearPlane(0.001);
         glDisable(GL_CULL_FACE);
+
         glStencilFunc(GL_ALWAYS, 0x00, 0xFF);
         glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_INCR_WRAP, GL_KEEP);
         glStencilOpSeparate(GL_BACK, GL_KEEP, GL_DECR_WRAP, GL_KEEP);
@@ -211,11 +209,13 @@ void renderShadowed(auto& renderer, auto& mainMat, auto& triangle, auto& shadowF
 
         glEnable(GL_DEPTH_CLAMP); // clamp infinity to max depth
 
-        mainMat.updateColor(glm::vec4(0.8, 0.2, 0.2, 1.0));
+        shadowMat.updateColor(glm::vec4(0.8, 0.2, 0.2, 1.0));
+        camera->setNearPlane(0.001);
         renderer.drawRenderable(&triangle, shadowFrontCapIndices.size(), shadowFrontCapIndices.data());
-        mainMat.updateColor(glm::vec4(0.2, 0.8, 0.2, 1.0));
+        camera->setNearPlane(0.0011);
+        shadowMat.updateColor(glm::vec4(0.2, 0.8, 0.2, 1.0));
         renderer.drawRenderable(&triangle, shadowEdgeIndices.size(), shadowEdgeIndices.data());
-        mainMat.updateColor(glm::vec4(0.2, 0.2, 0.8, 1.0));
+        shadowMat.updateColor(glm::vec4(0.2, 0.2, 0.8, 1.0));
         renderer.drawRenderable(&triangle, shadowBackCapIndices.size(), shadowBackCapIndices.data());
 
         glDisable(GL_DEPTH_CLAMP);
@@ -230,36 +230,47 @@ void renderShadowed(auto& renderer, auto& mainMat, auto& triangle, auto& shadowF
     //glDepthFunc(GL_LE);
     // draw non shadowed scene
     {
-        camera->setNearPlane(0.001001);
         glStencilFunc(GL_EQUAL, 0x00, 0xFF);
         glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_KEEP);
         glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_KEEP, GL_KEEP);
 
-        mainMat.updateColor(glm::vec4(0.9, 0.2, 0.5, 1.0));
-        drawScene(renderer);
+        shadowMat.updateColor(glm::vec4(0.9, 0.2, 0.5, 1.0));
+        drawScene(renderer, scene);
     }
 
 }
 
-int main(int, char**) {
+int main(int argc, char** argv) {
+
     std::printf("Hello world! Current directory: '%s'\n", std::filesystem::current_path().string().c_str());
 
     App app(1280, 720);
     PerspectiveCamera camera((float) app.getWidth() / (float) app.getHeight());
     Renderer renderer(&camera);
     InputController input{};
+    std::vector<Renderable> scene{};
+    std::vector<Renderable> phongScene{};
 
     glm::vec4 lightPos = glm::vec4(-30.0f, 130.0f, 40.0f, 1.0f);
 
-    auto mainMesh = Mesh::fromObjFile("assets/models/teste.obj");
+    const char *modelPath = "assets/models/teapot.obj";
+
+    if (argc == 2)
+        modelPath = argv[1];
+
+    auto mainMesh = Mesh::fromObjFile(modelPath);
     //auto mainMesh = createTriangleMesh();
     auto planeMesh = Mesh::fromObjFile("assets/models/plane.obj");
-    auto mainMat = ShadedColorMaterial(glm::vec4(0.3, 0.4, 0.5, 1.0), lightPos);
+    auto shadowMat = ShadedColorMaterial(glm::vec4(0.3, 0.4, 0.5, 1.0), lightPos);
+    auto phongMat = ColorPhongMaterial(glm::vec4(1.0, 0.0f, 0.0f, 1.0), lightPos, &camera);
 
-    auto triangle = Renderable(&mainMesh, &mainMat);
-    auto plane = Renderable(&planeMesh, &mainMat);
+    auto triangle = Renderable(&mainMesh, &shadowMat);
+    auto plane = Renderable(&planeMesh, &shadowMat);
+
+    auto phongRend = Renderable(&mainMesh, &phongMat);
     
     scene.push_back(triangle);
+    phongScene.push_back(phongRend);
     //scene.push_back(plane);
 
     auto [shadowFrontCapIndices, shadowBackCapIndices, shadowEdgeIndices] = calculateShadowVolume(lightPos, mainMesh); 
@@ -284,7 +295,7 @@ int main(int, char**) {
 
     renderer.clearColor(glm::vec4(0.1, 0.1f, 0.1f, 1.0f));
 
-    mainMat.updateColor(glm::vec4(0.1f, 0.2f, 0.6f, 1.0f));
+    shadowMat.updateColor(glm::vec4(0.1f, 0.2f, 0.6f, 1.0f));
 
     camera.setPosition(glm::vec3(0.0f, 0.0f, 2.0f));
 
@@ -317,33 +328,46 @@ int main(int, char**) {
 
         if (input.isPressed(Action::INTERACT)) {
             state <<= 1;
-            if (state & 0b100) state = 1;
+
+            if (state & 0b1000) state = 1;
+
             std::printf("\ninteracted %x\n", state);
-            if (state & 0b001)
+
+            if (state & 0b1) {
+                glDisable(GL_STENCIL_TEST);
+                std::printf("phong shadow\n");
+            }
+
+            if (state & 0b10) {
                 glEnable(GL_STENCIL_TEST);
                 std::printf("final scene\n");
-            if (state & 0b010)
+            }
+
+            if (state & 0b100) {
                 glDisable(GL_STENCIL_TEST);
                 std::printf("shadow volume\n");
+            }
         }
 
         renderer.clear();
 
-        if (state == 0b01)
-            renderShadowed(renderer, mainMat, triangle, shadowFrontCapIndices, shadowEdgeIndices, shadowBackCapIndices);
-        else if (state == 0b10) {
-            glDisable(GL_CULL_FACE);
+        if (state == 0b1) { 
+            drawScene(renderer, phongScene);
+        } else if (state == 0b10) {
+            renderShadowed(renderer, scene, shadowMat, triangle, shadowFrontCapIndices, shadowEdgeIndices, shadowBackCapIndices);
+        } else if (state == 0b100) {
+            //glDisable(GL_CULL_FACE);
             glDisable(GL_DEPTH_TEST);
             glStencilFunc(GL_ALWAYS, 0x00, 0xFF);
             glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_KEEP);
             glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_KEEP, GL_KEEP);
 
-            mainMat.updateColor(glm::vec4(0.8, 0.2, 0.2, 0.2));
-            //renderer.drawRenderable(&triangle, shadowFrontCapIndices.size(), shadowFrontCapIndices.data());
-            mainMat.updateColor(glm::vec4(0.2, 0.8, 0.2, 0.2));
+            shadowMat.updateColor(glm::vec4(1.0, 0.0, 0.0, 0.2));
+            renderer.drawRenderable(&triangle, shadowFrontCapIndices.size(), shadowFrontCapIndices.data());
+            shadowMat.updateColor(glm::vec4(0.0, 1.0, 0.0, 0.2));
             renderer.drawRenderable(&triangle, shadowEdgeIndices.size(), shadowEdgeIndices.data());
-            mainMat.updateColor(glm::vec4(0.2, 0.2, 0.8, 0.2));
-            //renderer.drawRenderable(&triangle, shadowBackCapIndices.size(), shadowBackCapIndices.data());
+            shadowMat.updateColor(glm::vec4(0.0, 0.0, 1.0, 0.2));
+            renderer.drawRenderable(&triangle, shadowBackCapIndices.size(), shadowBackCapIndices.data());
             glEnable(GL_CULL_FACE);
             glEnable(GL_DEPTH_TEST);
         }

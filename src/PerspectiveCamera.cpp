@@ -9,8 +9,8 @@
 #include <cstdio>
 
 void PerspectiveCamera::recalculateProjectionMatrix() {
-    //mProjectionMatrix = glm::infinitePerspective(mFov, mAspectRatio, mNearPlane);
-    mProjectionMatrix = glm::perspective(mFov, mAspectRatio, mNearPlane, 100.0f);
+    mProjectionMatrix = glm::infinitePerspective(mFov, mAspectRatio, mNearPlane);
+    //mProjectionMatrix = glm::perspective(mFov, mAspectRatio, mNearPlane, 100.0f);
 }
 
 void PerspectiveCamera::recalculateViewMatrix() {

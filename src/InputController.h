@@ -23,24 +23,28 @@ enum class Action : uint8_t {
     LOOK_RIGHT,
     INTERACT,
     EXIT,
+    SPEED_UP,
+    SPEED_DOWN,
     COUNT
 };
 
 class InputController {
 private:
     std::unordered_map<SDL_Keycode, Action> mBindings = {
-        {SDLK_w,      Action::FORWARD},
-        {SDLK_s,      Action::BACKWARD},
-        {SDLK_a,      Action::LEFT},
-        {SDLK_d,      Action::RIGHT},
-        {SDLK_LSHIFT, Action::DOWN},
-        {SDLK_SPACE,  Action::UP},
-        {SDLK_k,      Action::LOOK_UP},
-        {SDLK_j,      Action::LOOK_DOWN},
-        {SDLK_h,      Action::LOOK_LEFT},
-        {SDLK_l,      Action::LOOK_RIGHT},
-        {SDLK_e,      Action::INTERACT},
-        {SDLK_ESCAPE, Action::EXIT},
+        {SDLK_w,            Action::FORWARD},
+        {SDLK_s,            Action::BACKWARD},
+        {SDLK_a,            Action::LEFT},
+        {SDLK_d,            Action::RIGHT},
+        {SDLK_LSHIFT,       Action::DOWN},
+        {SDLK_SPACE,        Action::UP},
+        {SDLK_k,            Action::LOOK_UP},
+        {SDLK_j,            Action::LOOK_DOWN},
+        {SDLK_h,            Action::LOOK_LEFT},
+        {SDLK_l,            Action::LOOK_RIGHT},
+        {SDLK_e,            Action::INTERACT},
+        {SDLK_ESCAPE,       Action::EXIT},
+        {SDLK_RIGHTBRACKET, Action::SPEED_UP},
+        {SDLK_LEFTBRACKET,  Action::SPEED_DOWN},
     };
 
     std::vector<bool> mPressed;

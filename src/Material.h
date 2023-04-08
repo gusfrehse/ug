@@ -12,6 +12,8 @@
 
 #include <glm/vec4.hpp>
 
+#include "Camera.h"
+
 class Material {
 private:
     GLint mShaderProgram = 0;
@@ -48,6 +50,22 @@ class ShadedColorMaterial : public Material {
 
 public:
     explicit ShadedColorMaterial(glm::vec4 color, glm::vec4 lightPos);
+    void updateColor(glm::vec4 color);
+    void updateLightPos(glm::vec4 lightPos);
+    void updateUniforms() override;
+};
+
+class ColorPhongMaterial : public Material {
+    Camera *mCamera;
+    glm::vec4 mColor = glm::vec4(1.0f, 0.0f, 1.0f, 1.0f);
+    glm::vec4 mLightPos = glm::vec4(1.0f, 0.0f, 1.0f, 1.0f);
+    GLint mColorUniformLocation = -1;
+    GLint mLightPosUniformLocation = -1;
+    GLint mCamPosUniformLocation = -1;
+
+public:
+    explicit ColorPhongMaterial(glm::vec4 color, glm::vec4 lightPos, Camera *cam);
+    void updateCamera(Camera *color);
     void updateColor(glm::vec4 color);
     void updateLightPos(glm::vec4 lightPos);
     void updateUniforms() override;
